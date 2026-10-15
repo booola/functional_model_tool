@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Functional Model Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF1EA;--panel:#F7F8F4;--ink:#1C2733;--ink2:#5A6672;--rule:#CBD2C7;--grid:#DDE3D8;--block:#FFFFFF;
+  --mat:#1F4E9E;--en:#B4321E;--sig:#1D7A49;--none:#8A949C;--sel:#D49400;--mod:#5A4A9C;
+  --err:#B4321E;--warn:#9A6400;--info:#3D6C8A;--hover:#E6EAE2;--btn:#FFFFFF;
+  color-scheme:light;box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#151C22;--panel:#1B232B;--ink:#DCE4EA;--ink2:#93A1AD;--rule:#2F3A44;--grid:#1F2830;--block:#202B35;
+    --mat:#7FA9F2;--en:#F08A72;--sig:#62C990;--none:#73808B;--sel:#F2C14E;--mod:#A99BEB;
+    --err:#F08A72;--warn:#E8B04B;--info:#7FB3D4;--hover:#24303A;--btn:#222D37;color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#151C22;--panel:#1B232B;--ink:#DCE4EA;--ink2:#93A1AD;--rule:#2F3A44;--grid:#1F2830;--block:#202B35;
+  --mat:#7FA9F2;--en:#F08A72;--sig:#62C990;--none:#73808B;--sel:#F2C14E;--mod:#A99BEB;
+  --err:#F08A72;--warn:#E8B04B;--info:#7FB3D4;--hover:#24303A;--btn:#222D37;color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 "Barlow","Segoe UI",system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+.app{display:grid;grid-template-rows:auto minmax(0,1fr);height:100%}
+header{display:flex;align-items:center;gap:18px;padding:10px 16px;border-bottom:1px solid var(--rule);background:var(--panel);flex-wrap:wrap}
+h1{font:600 19px/1.1 "Barlow Semi Condensed","Barlow",system-ui,sans-serif;margin:0}
+.steps{display:flex;border:1px solid var(--ink);border-radius:4px;overflow:hidden}
+.steps button{background:var(--btn);border:0;border-right:1px solid var(--ink);padding:6px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:500}
+.steps button:last-child{border-right:0}
+.steps button b{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;font-size:12px}
+.steps button[aria-current="step"]{background:var(--ink);color:var(--paper)}
+.mode{display:flex;border:1px solid var(--rule);border-radius:4px;overflow:hidden}
+.mode button{background:var(--btn);border:0;padding:6px 11px;cursor:pointer;font-weight:500;color:var(--ink2)}
+.mode button[aria-pressed="true"]{background:var(--hover);color:var(--ink);box-shadow:inset 0 -2px 0 var(--ink)}
+.dim{opacity:.16;pointer-events:none}
+.lane{fill:var(--ink);fill-opacity:.035;stroke:var(--ink2);stroke-opacity:.4;stroke-width:1}
+.lanelab{fill:var(--ink2);font:600 13px "Barlow",system-ui,sans-serif}
+#cnview{position:absolute;inset:0;overflow:auto;padding:18px 22px 40px;background:var(--paper)}
+#cnview h2{font:600 20px "Barlow Semi Condensed",system-ui,sans-serif;margin:0 0 4px}
+.cnwrap{overflow-x:auto}
+#cnview table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px;background:var(--panel)}
+#cnview th{text-align:left;font-weight:600;border-bottom:2px solid var(--ink);padding:7px 6px}
+#cnview td{border-bottom:1px solid var(--rule);padding:4px 6px;vertical-align:top}
+#cnview td input,#cnview td select{width:100%;padding:4px 6px;border:1px solid transparent;border-radius:3px;background:transparent}
+#cnview td input:hover,#cnview td input:focus,#cnview td select:hover{border-color:var(--rule);background:var(--btn)}
+#cnview td.n{color:var(--ink2);width:28px;padding-top:9px}
+#cnview tr.nofl td{background:color-mix(in srgb,var(--warn) 7%,transparent)}
+#cnview details{margin:10px 0}
+#cnview details textarea{width:100%;height:110px;margin:6px 0;padding:6px;border:1px solid var(--rule);border-radius:4px;background:var(--btn);font:13px/1.4 ui-monospace,Consolas,monospace}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.fchip{font-size:12.5px;border:1px solid var(--rule);border-radius:10px;padding:1px 8px;display:inline-flex;gap:5px;align-items:center;background:var(--btn)}
+.fchip .chip{width:8px;height:8px}
+.fchip button{border:0;background:none;cursor:pointer;padding:0 2px;color:var(--ink2);font-size:14px;line-height:1}
+.fchip.man{border-style:dashed}
+.addsel{font-size:12.5px;padding:2px 4px;border:1px solid var(--rule);border-radius:4px;background:var(--btn);max-width:190px}
+.need{border:1px solid var(--rule);border-radius:4px;margin:0 0 8px;padding:7px 8px;background:var(--btn)}
+.need.unmet{border-color:var(--err)}
+.needhead{display:flex;gap:8px;width:100%;background:none;border:0;padding:0;text-align:left;cursor:pointer;font-weight:500;align-items:flex-start}
+.needhead .t{flex:1}
+.needhead .dot{margin-top:6px}
+.imp{font-size:12px;color:var(--ink2);white-space:nowrap}
+.needsub{font-size:12.5px;color:var(--ink2);margin:3px 0 5px 17px}
+.need .chips{margin-left:17px}
+.d-ok{background:var(--sig)}
+.badge{font-size:12px;padding:0 6px;border-radius:9px;background:var(--err);color:#fff;font-weight:600}
+.badge.ok{background:var(--sig)}
+.tools{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.btn{background:var(--btn);border:1px solid var(--rule);border-radius:4px;padding:5px 11px;cursor:pointer}
+.btn:hover{border-color:var(--ink2)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn.danger{color:var(--err)}
+.btn:disabled{opacity:.45;cursor:default}
+main{display:grid;grid-template-columns:276px minmax(0,1fr) 330px;min-height:0}
+aside{background:var(--panel);overflow:auto;min-height:0}
+#left{border-right:1px solid var(--rule);display:flex;flex-direction:column}
+#right{border-left:1px solid var(--rule);padding:14px 16px 30px}
+.guide{padding:14px 16px 10px;border-bottom:1px solid var(--rule)}
+.guide h2{font:600 16px/1.2 "Barlow Semi Condensed",system-ui,sans-serif;margin:0 0 6px}
+.guide p{margin:0;color:var(--ink2);font-size:14px}
+.paltabs{display:flex;gap:4px;padding:10px 16px 0}
+.paltabs button{border:0;background:none;padding:4px 8px;border-bottom:2px solid transparent;cursor:pointer;color:var(--ink2);font-weight:500}
+.paltabs button[aria-selected="true"]{color:var(--ink);border-color:var(--ink)}
+.search{padding:8px 16px}
+.search input{width:100%;padding:6px 9px;border:1px solid var(--rule);border-radius:4px;background:var(--btn)}
+#pal{flex:1;overflow:auto;padding:0 8px 10px;min-height:120px}
+#pal details{margin:2px 0}
+#pal summary{cursor:pointer;padding:5px 8px;font-weight:600;border-radius:3px;list-style:none;display:flex;align-items:center;gap:6px}
+#pal summary::before{content:"";width:0;height:0;border:4px solid transparent;border-left:6px solid var(--ink2);transition:transform .15s}
+#pal details[open]>summary::before{transform:rotate(90deg) translate(2px,-2px)}
+#pal summary:hover{background:var(--hover)}
+.row{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:3px;cursor:pointer;user-select:none}
+.row:hover,.row:focus-visible{background:var(--hover)}
+.row .nm{font-weight:500}
+.row .cr{color:var(--ink2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.row.l2{padding-left:20px}.row.l3{padding-left:34px}
+.row .mini{border:1px solid var(--rule);background:var(--btn);border-radius:3px;font-size:12px;padding:0 6px;cursor:pointer;flex:none}
+.row .mini:hover{border-color:var(--ink)}
+.crumb{color:var(--ink2);font-size:12px}
+.chip{width:10px;height:10px;border-radius:2px;flex:none}
+.c-Material{background:var(--mat)}.c-Energy{background:var(--en)}.c-Signal{background:var(--sig)}.c-none{background:var(--none)}
+#def{border-top:1px solid var(--rule);padding:10px 16px 14px;font-size:13.5px;min-height:92px}
+#def b{font-size:14.5px}
+#def .crumb{display:block;margin-bottom:2px}
+#def p{margin:4px 0 0;color:var(--ink2)}
+.src{display:block;margin-top:6px;font-size:12px;color:var(--ink2)}
+.src a,.refbox a{color:var(--info)}
+.refbox{border-top:1px solid var(--rule);padding:8px 16px 12px;font-size:12.5px;color:var(--ink2)}
+.refbox summary{cursor:pointer;font-weight:600;color:var(--ink)}
+.refbox p{margin:6px 0 0;line-height:1.45}
+#stage{position:relative;overflow:hidden;background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);touch-action:none}
+#cv{width:100%;height:100%;display:block;cursor:grab}
+#cv.panning{cursor:grabbing}
+.stagebar{position:absolute;top:10px;left:10px;right:10px;display:flex;gap:6px;pointer-events:none;flex-wrap:wrap}
+.stagebar>*{pointer-events:auto}
+.stagebar .sp{flex:1}
+.legend{position:absolute;left:10px;bottom:10px;display:flex;gap:14px;background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:5px 10px;font-size:12.5px;align-items:center}
+.legend svg{display:block}
+.hint{position:absolute;right:10px;bottom:10px;font-size:12.5px;color:var(--ink2);background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:5px 10px;max-width:46%}
+.empty{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.empty div{pointer-events:auto;background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:18px 20px;max-width:380px;text-align:left}
+.empty h3{margin:0 0 6px;font:600 17px "Barlow Semi Condensed",system-ui,sans-serif}
+.empty p{margin:0 0 12px;color:var(--ink2);font-size:14px}
+input.inline{position:absolute;z-index:5;padding:5px 8px;border:2px solid var(--sel);border-radius:3px;background:var(--btn);font-size:14px}
+/* svg */
+.blk{fill:var(--block);stroke:var(--ink);stroke-width:1.3}
+.sel .blk,.blk.sel{stroke:var(--sel);stroke-width:3}
+.btxt{fill:var(--ink);font:500 14px "Barlow Semi Condensed","Barlow",system-ui,sans-serif;pointer-events:none}
+.bterm{fill:var(--ink2);font:500 11px "Barlow",system-ui,sans-serif;pointer-events:none}
+.bterm.missing{fill:var(--err)}
+.term{fill:var(--paper);stroke:var(--ink2);stroke-width:1}
+.sel .term{stroke:var(--sel);stroke-width:2.5}
+.ttxt{fill:var(--ink);font:500 13.5px "Barlow",system-ui,sans-serif;pointer-events:none}
+.tcap{fill:var(--ink2);font:400 11px "Barlow",system-ui,sans-serif;pointer-events:none}
+.port{fill:var(--paper);stroke:var(--ink);stroke-width:1.5;cursor:crosshair}
+.port:hover{fill:var(--sel)}
+.fl{fill:none}
+.f-Material{stroke:var(--mat);stroke-width:3.2}
+.f-Energy{stroke:var(--en);stroke-width:1.7}
+.f-Signal{stroke:var(--sig);stroke-width:1.7;stroke-dasharray:7 4}
+.f-none{stroke:var(--none);stroke-width:1.5;stroke-dasharray:2 3}
+.halo{fill:none;stroke:var(--sel);stroke-width:8;stroke-opacity:.45}
+.hit{fill:none;stroke:transparent;stroke-width:14;cursor:pointer}
+.elab{font:500 12.5px "Barlow",system-ui,sans-serif;fill:var(--ink);paint-order:stroke;stroke:var(--paper);stroke-width:5px;stroke-linejoin:round;cursor:pointer}
+.elab.sel{fill:var(--sel)}
+.mod{fill:var(--mod);fill-opacity:.04;stroke:var(--mod);stroke-width:1.5;stroke-dasharray:8 5}
+.mod.sel{stroke-width:2.6;fill-opacity:.08}
+.mlab{fill:var(--mod);font:600 13px "Barlow Semi Condensed",system-ui,sans-serif;cursor:move}
+.bnd{fill:none;stroke:var(--ink2);stroke-width:1;stroke-opacity:.55}
+.bcap{fill:var(--ink2);font:500 12px "Barlow",system-ui,sans-serif}
+.bbox{fill:var(--block);stroke:var(--ink);stroke-width:2;cursor:pointer}
+.bbox.sel{stroke:var(--sel);stroke-width:3}
+.bbtitle{fill:var(--ink);font:600 22px "Barlow Semi Condensed",system-ui,sans-serif;pointer-events:none}
+.bbtitle.ph{fill:var(--ink2);font-weight:500}
+.marq{fill:var(--sel);fill-opacity:.08;stroke:var(--sel);stroke-dasharray:4 3}
+.iss circle{stroke:var(--paper);stroke-width:2}
+.iss text{fill:#fff;font:700 11px system-ui,sans-serif;pointer-events:none}
+/* inspector */
+#right h2{font:600 17px/1.2 "Barlow Semi Condensed",system-ui,sans-serif;margin:0 0 10px}
+#right h3{font:600 14.5px "Barlow",system-ui,sans-serif;margin:18px 0 6px}
+.fld{display:block;margin:0 0 10px}
+.fld>span{display:block;font-size:13px;color:var(--ink2);margin-bottom:3px}
+.fld input,.fld textarea,.picker select{width:100%;padding:6px 8px;border:1px solid var(--rule);border-radius:4px;background:var(--btn)}
+.picker{display:grid;gap:6px;margin:0 0 10px}
+.picker label span{display:block;font-size:12px;color:var(--ink2)}
+.note{font-size:13px;color:var(--ink2);margin:4px 0 10px}
+.defn{font-size:13.5px;background:var(--hover);border-radius:4px;padding:8px 10px;margin:0 0 12px}
+.defn i{color:var(--ink2);font-style:normal;display:block;margin-top:4px;font-size:12.5px}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.list{display:grid;gap:4px;margin:0 0 6px}
+.li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--rule);border-radius:4px;cursor:pointer;background:var(--btn);text-align:left;width:100%}
+.li:hover{border-color:var(--ink2)}
+.li.sel{border-color:var(--sel);box-shadow:inset 0 0 0 1px var(--sel)}
+.li .t{flex:1;min-width:0}
+.li .t small{display:block;color:var(--ink2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.issue{display:flex;gap:9px;padding:8px 6px;border-bottom:1px solid var(--rule);cursor:pointer;font-size:14px}
+.issue:hover{background:var(--hover)}
+.dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none}
+.d-error{background:var(--err)}.d-warn{background:var(--warn)}.d-info{background:var(--info)}
+.summary{font-size:14px;margin:0 0 10px}
+.card{border:1px solid var(--rule);border-radius:4px;padding:10px 10px 4px;margin:0 0 10px;background:var(--panel)}
+.kbd{font-size:12.5px;color:var(--ink2);line-height:1.6}
+.kbd kbd{font:inherit;border:1px solid var(--rule);border-radius:3px;padding:0 4px;background:var(--btn)}
+dialog{border:1px solid var(--rule);border-radius:6px;background:var(--panel);color:var(--ink);max-width:min(640px,92vw);width:100%;padding:18px 20px}
+dialog::backdrop{background:rgba(10,15,20,.4)}
+dialog h2{margin:0 0 6px;font:600 18px "Barlow Semi Condensed",system-ui,sans-serif}
+.dlgh{font:600 14px "Barlow",system-ui,sans-serif;margin:12px 0 0}
+.dlgmsg{margin:8px 0;font-size:14px;font-weight:500;color:var(--warn)}
+.dlgmsg:empty{display:none}
+.dlgmsg.ok{color:var(--sig)}
+dialog textarea{width:100%;height:200px;font:12.5px/1.4 ui-monospace,Consolas,monospace;padding:8px;border:1px solid var(--rule);border-radius:4px;background:var(--btn)}
+.xopts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0 12px}
+fieldset{border:1px solid var(--rule);border-radius:4px;padding:6px 12px 10px;margin:0}
+legend{font-weight:600;font-size:13.5px;padding:0 4px}
+fieldset label{display:flex;gap:7px;align-items:flex-start;font-size:14px;margin-top:5px;cursor:pointer}
+fieldset input{margin-top:4px}
+.xprev{border:1px solid var(--rule);border-radius:4px;background:repeating-conic-gradient(var(--hover) 0 25%,transparent 0 50%) 0 0/16px 16px;height:300px;display:grid;place-items:center;overflow:auto;padding:10px}
+.xprev img{max-width:100%;max-height:100%;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+.xtitle{fill:var(--ink);font:600 26px "Barlow Semi Condensed","Barlow",system-ui,sans-serif}
+.xsub{fill:var(--ink2);font:400 13px "Barlow",system-ui,sans-serif}
+.xcap{fill:var(--ink);font:600 16px "Barlow",system-ui,sans-serif}
+.xrule{stroke:var(--rule);stroke-width:1}
+.xbg{fill:var(--paper)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:4px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.on{opacity:1}
+@media (max-width:980px){
+  .app{height:auto;min-height:100%}
+  body{height:auto}
+  main{grid-template-columns:1fr;grid-template-rows:auto 64vh auto}
+  #left{border-right:0;border-bottom:1px solid var(--rule);max-height:44vh}
+  #right{border-left:0;border-top:1px solid var(--rule)}
+  .hint{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>Functional Model Builder</h1>
+  <div class="mode" id="mode" role="group" aria-label="Modeling approach">
+    <button data-mode="quick" title="Black box, function structure, check">Quick</button>
+    <button data-mode="guided" title="Black box, customer needs, function chains, aggregate, verify">5-step</button>
+  </div>
+  <nav class="steps" id="steps" aria-label="Modeling steps"></nav>
+  <div class="tools">
+    <button class="btn" id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button class="btn" id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    <select class="btn" id="ex" aria-label="Load an example model">
+      <option value="">Load example…</option>
+      <option value="vacuum">Handheld vacuum (5-step)</option>
+      <option value="nail">Nail gun (quick)</option>
+      <option value="coffee">Coffee maker (quick, illustrative)</option>
+    </select>
+    <button class="btn" id="new">New model</button>
+    <button class="btn" id="data">Save / load</button>
+    <button class="btn primary" id="exportBtn">Export diagram</button>
+    <a class="btn" id="feedback" href="https://forms.gle/sKqEBD5rCweH1zap8" target="_blank" rel="noopener noreferrer" title="Opens a feedback form in a new tab" style="text-decoration:none;display:inline-flex;align-items:center">Feedback</a>
+  </div>
+</header>
+<main>
+  <aside id="left">
+    <div class="guide" id="guide"></div>
+    <div class="paltabs" id="paltabs" role="tablist"></div>
+    <div class="search"><input id="q" type="search" placeholder="Search terms and synonyms" aria-label="Search the functional basis"></div>
+    <div id="pal"></div>
+    <div id="def"><span class="crumb">Hover a term to read its definition.</span></div>
+    <details class="refbox"><summary>Reference for all functions and flows</summary>
+      <p id="refFull"></p>
+    </details>
+  </aside>
+  <section id="stage">
+    <svg id="cv" aria-label="Model canvas">
+      <defs>
+        <marker id="ar-Material" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--mat)"/></marker>
+        <marker id="ar-Energy" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--en)"/></marker>
+        <marker id="ar-Signal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--sig)"/></marker>
+        <marker id="ar-none" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--none)"/></marker>
+      </defs>
+      <g id="vp"></g>
+    </svg>
+    <div class="stagebar" id="stagebar"></div>
+    <div class="legend" aria-label="Flow legend">
+      <span style="display:flex;gap:5px;align-items:center"><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" class="f-Material"/></svg>Material</span>
+      <span style="display:flex;gap:5px;align-items:center"><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" class="f-Energy"/></svg>Energy</span>
+      <span style="display:flex;gap:5px;align-items:center"><svg width="30" height="8"><line x1="0" y1="4" x2="30" y2="4" class="f-Signal"/></svg>Signal</span>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="empty" id="empty" hidden></div>
+    <div id="cnview" hidden></div>
+  </section>
+  <aside id="right"></aside>
+</main>
+</div>
+<dialog id="dlg">
+  <h2>Save or load a model</h2>
+  <p class="note">Your model saves in this browser automatically. To keep a backup or share it, download it as a .txt file or copy the text below. To open a model, choose a .txt file saved from this tool, or paste its text here and load it.</p>
+  <h3 class="dlgh">Save</h3>
+  <div class="btns">
+    <button class="btn primary" id="dDown">Download as .txt</button>
+    <button class="btn" id="dCopy">Copy model text</button>
+  </div>
+  <h3 class="dlgh">Load</h3>
+  <div class="btns">
+    <button class="btn primary" id="dOpen">Open .txt file</button>
+    <button class="btn" id="dLoad">Load pasted text</button>
+    <input type="file" id="dFile" accept=".txt,.json,text/plain,application/json" hidden>
+  </div>
+  <p class="dlgmsg" id="dlgmsg" role="alert"></p>
+  <textarea id="dlgtxt" spellcheck="false" aria-label="Model text"></textarea>
+  <div class="btns">
+    <span style="flex:1"></span>
+    <button class="btn" id="dClose">Close</button>
+  </div>
+</dialog>
+<dialog id="exp">
+  <h2>Export diagram</h2>
+  <div class="xopts">
+    <fieldset><legend>Include</legend>
+      <label><input type="radio" name="xwhat" value="all" checked> Overall diagram: black box and function structure</label>
+      <label><input type="radio" name="xwhat" value="bb"> Black box only</label>
+      <label><input type="radio" name="xwhat" value="fs"> Function structure only</label>
+    </fieldset>
+    <fieldset><legend>Format</legend>
+      <label><input type="radio" name="xfmt" value="png" checked> PNG image</label>
+      <label><input type="radio" name="xfmt" value="pdf"> PDF (A4, fitted)</label>
+      <label><input type="radio" name="xfmt" value="svg"> SVG vector</label>
+    </fieldset>
+    <fieldset><legend>Options</legend>
+      <label><input type="checkbox" id="xLeg" checked> Flow legend</label>
+      <label><input type="checkbox" id="xMod" checked> Module list</label>
+      <label><input type="checkbox" id="xNeeds" checked> Customer needs table (5-step)</label>
+      <label><input type="checkbox" id="xRef" checked> Functional basis reference</label>
+      <label><input type="checkbox" id="xLight" checked> Light colors for print</label>
+    </fieldset>
+  </div>
+  <div class="xprev" id="xprev"></div>
+  <p class="note" id="xmsg"></p>
+  <div class="btns">
+    <button class="btn primary" id="xGo">Download</button>
+    <button class="btn" id="xCopy">Copy SVG</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="xClose">Close</button>
+  </div>
+</dialog>
+<div id="toast" role="status"></div>
+<script>
+/* ===================== Functional basis ===================== */
+const FB=[
+ {n:'Branch',d:'Cause a flow (material, energy, signal) to no longer be joined or mixed.',k:[
+  {n:'Separate',c:'Isolate, sever, disjoin',d:'Isolate a flow into distinct components, distinct from the flow before separation and from each other. Example: a prism separates light into wavelengths.',k:[
+   {n:'Divide',c:'Detach, isolate, release, sort, split, disconnect, subtract',d:'Separate a flow. Example: a vending machine divides coins into denominations.'},
+   {n:'Extract',c:'Refine, filter, purify, percolate, strain, clear',d:'Draw, or forcibly pull out, a flow. Example: a vacuum cleaner extracts debris from the imported mixture.'},
+   {n:'Remove',c:'Cut, drill, lathe, polish, sand',d:'Take away a part of a flow from its prefixed place. Example: a sander removes small pieces of the wood surface.'}]},
+  {n:'Distribute',c:'Diffuse, dispel, disperse, dissipate, diverge, scatter',d:'Cause a flow to break up; the bits are similar to each other and to the undistributed flow. Example: an atomizer distributes hair-styling liquid.'}]},
+ {n:'Channel',d:'Cause a flow (material, energy, signal) to move from one location to another.',k:[
+  {n:'Import',c:'Form entrance, allow, input, capture',d:'Bring in a flow from outside the system boundary. Example: the opening of a blender pitcher imports food.'},
+  {n:'Export',c:'Dispose, eject, emit, empty, remove, destroy, eliminate',d:'Send a flow outside the system boundary. Example: pouring blended food out exports liquid.'},
+  {n:'Transfer',c:'Carry, deliver',d:'Shift, or convey, a flow from one place to another.',k:[
+   {n:'Transport',c:'Advance, lift, move',d:'Move a material from one place to another. Example: a coffee maker transports water from its reservoir to the filter basket.'},
+   {n:'Transmit',c:'Conduct, convey',d:'Move an energy from one place to another. Example: a sander housing transmits human force to the workpiece.'}]},
+  {n:'Guide',c:'Direct, shift, steer, straighten, switch',d:'Direct the course of a flow along a specific path. Example: HVAC ducts guide air around a house.',k:[
+   {n:'Translate',c:'Move, relocate',d:'Fix the movement of a flow by a device into one linear direction. Example: a conveyor translates products between stations.'},
+   {n:'Rotate',c:'Spin, turn',d:'Fix the movement of a flow by a device around one axis. Example: a disk drive rotates its disks.'},
+   {n:'Allow DOF',c:'Constrain, unfasten, unlock',d:'Control the movement of a flow, by a force external to the device, into one or more directions. Example: a four-bar linkage allows a rotational DOF for a trunk lid.'}]}]},
+ {n:'Connect',d:'Bring two or more flows (material, energy, signal) together.',k:[
+  {n:'Couple',c:'Associate, connect',d:'Join or bring together flows so the members are still distinguishable. Example: a pencil couples an eraser and a shaft.',k:[
+   {n:'Join',c:'Assemble, fasten',d:'Couple flows together in a predetermined manner. Example: a ratchet joins a socket on its square shaft.'},
+   {n:'Link',c:'Attach',d:'Couple flows together by means of an intermediary flow. Example: a turnbuckle links two cable ends.'}]},
+  {n:'Mix',c:'Add, blend, coalesce, combine, pack',d:'Combine two flows into a single, uniform homogeneous mass. Example: a shaker mixes paint base and dyes.'}]},
+ {n:'Control Magnitude',d:'Alter or govern the size or amplitude of a flow (material, energy, signal).',k:[
+  {n:'Actuate',c:'Enable, initiate, start, turn-on',d:'Commence the flow of energy, signal, or material in response to an imported control signal. Example: a switch actuates electrical energy to a bulb.'},
+  {n:'Regulate',c:'Control, equalize, limit, maintain',d:'Adjust a flow in response to a control signal, such as a characteristic of a flow. Example: faucet valves regulate the flow of water.',k:[
+   {n:'Increase',c:'Allow, open',d:'Enlarge a flow in response to a control signal. Example: opening a faucet valve further increases water flow.'},
+   {n:'Decrease',c:'Close, delay, interrupt',d:'Reduce a flow in response to a control signal. Example: closing a valve decreases propane flow.'}]},
+  {n:'Change',c:'Adjust, modulate, clear, demodulate, invert, normalize, rectify, reset, scale, vary, modify',d:'Adjust a flow in a predetermined and fixed manner. Example: a variable resistor changes electrical energy to a drill motor.',k:[
+   {n:'Increment',c:'Amplify, enhance, magnify, multiply',d:'Enlarge a flow in a predetermined and fixed manner. Example: a magnifying glass increments the visual signal of print.'},
+   {n:'Decrement',c:'Attenuate, dampen, reduce',d:'Reduce a flow in a predetermined and fixed manner. Example: a gear train decrements rotational energy.'},
+   {n:'Shape',c:'Compact, compress, crush, pierce, deform, form',d:'Mold or form a flow. Example: presses shape sheet metal into fenders.'},
+   {n:'Condition',c:'Prepare, adapt, treat',d:'Render a flow appropriate for the desired use. Example: a surge protector conditions electrical energy.'}]},
+  {n:'Stop',c:'End, halt, pause, interrupt, restrain',d:'Cease, or prevent, the transfer of a flow. Example: a reflective coating stops UV radiation.',k:[
+   {n:'Prevent',c:'Disable, turn-off',d:'Keep a flow from happening. Example: a dam gate prevents water flowing to the other side.'},
+   {n:'Inhibit',c:'Shield, insulate, protect, resist',d:'Significantly restrain a flow, though a portion continues to be transferred. Example: spacecraft structure inhibits radiation.'}]}]},
+ {n:'Convert',d:'Change from one form of a flow to another.',k:[
+  {n:'Convert',c:'Condense, create, decode, differentiate, digitize, encode, evaporate, generate, integrate, liquefy, process, solidify, transform',d:'Change from one form of a flow (material, energy, signal) to another. Example: an electric motor converts electricity to rotational energy.'}]},
+ {n:'Provision',d:'Accumulate or provide a material or energy flow.',k:[
+  {n:'Store',c:'Accumulate',d:'Accumulate a flow. Example: a battery stores energy in a flashlight.',k:[
+   {n:'Contain',c:'Capture, enclose',d:'Keep a flow within limits. Example: a vacuum bag contains debris.'},
+   {n:'Collect',c:'Absorb, consume, fill, reserve',d:'Bring a flow together into one place. Example: solar panels collect sun rays.'}]},
+  {n:'Supply',c:'Provide, replenish, retrieve',d:'Provide a flow from storage. Example: a battery supplies energy to the bulb.'}]},
+ {n:'Signal',d:'Provide information on a material, energy or signal flow as an output signal flow. The information-providing flow passes through unchanged.',k:[
+  {n:'Sense',c:'Feel, determine',d:'Perceive, or become aware, of a flow. Example: a cassette machine senses the end of the tape.',k:[
+   {n:'Detect',c:'Discern, perceive, recognize',d:'Discover information about a flow. Example: a gauge detects proper pressure ranges.'},
+   {n:'Measure',c:'Identify, locate',d:'Determine the magnitude of a flow. Example: a thermostat measures temperature.'}]},
+  {n:'Indicate',c:'Announce, show, denote, record, register',d:'Make something known to the user about a flow. Example: a window indicates the water level.',k:[
+   {n:'Track',c:'Mark, time',d:'Observe and record data from a flow. Example: tracking battery performance.'},
+   {n:'Display',c:'Emit, expose, select',d:'Reveal something about a flow to the mind or eye. Example: a DRO displays tool position.'}]},
+  {n:'Process',c:'Compare, calculate, check',d:'Submit information to a treatment or method with a set number of steps. Example: a computer processes a login request.'}]},
+ {n:'Support',d:'Firmly fix a material into a defined location, or secure an energy or signal into a specific course.',k:[
+  {n:'Stabilize',c:'Steady',d:'Prevent a flow from changing course or location. Example: a low center of gravity stabilizes a canister vacuum.'},
+  {n:'Secure',c:'Constrain, hold, place, fix',d:'Firmly fix a flow path. Example: a Velcro strap secures the hand.'},
+  {n:'Position',c:'Align, locate, orient',d:'Place a flow into a specific location or orientation. Example: a coin slot positions the coin.'}]}
+];
+const FL=[
+ {n:'Material',d:'Matter that crosses or moves within the system.',k:[
+  {n:'Human',c:'Hand, foot, head',d:'All or part of a person who crosses the device boundary. Example: a hand actuating a coffee maker.'},
+  {n:'Gas',c:'Homogeneous',d:'A collection of molecules in random motion with no bonds between them. Example: air moved by a fan.'},
+  {n:'Liquid',c:'Incompressible, compressible, homogeneous',d:'A readily flowing fluid whose molecules move freely but, through cohesion, do not expand indefinitely. Example: water in a coffee maker.'},
+  {n:'Solid',d:'Any object with mass having a definite, firm shape.',k:[
+   {n:'Object',c:'Rigid-body, elastic-body, widget',d:'Material that can be seen or touched and occupies space.'},
+   {n:'Particulate',d:'Substance containing minute separate particles. Example: granular sugar, powdered paint.'},
+   {n:'Composite',d:'Solid of two or more substances that each retain their identity while contributing to the whole. Example: fiberglass, Kevlar honeycomb.'}]},
+  {n:'Plasma',d:'Electrically neutral collection of charged particles; conducts electricity and responds to magnetic fields.'},
+  {n:'Mixture',d:'Two or more components, not in fixed proportions, that keep their characteristics and can be separated physically.',k:[
+   {n:'Gas-gas',d:'Two or more gases. Example: argon and CO₂ welding gas.'},
+   {n:'Liquid-liquid',d:'Two or more liquids. Example: two-stroke oil and gasoline.'},
+   {n:'Solid-solid',c:'Aggregate',d:'Two or more solids. Example: cured concrete.'},
+   {n:'Solid-liquid',d:'At least one solid and one liquid. Example: iced tea.'},
+   {n:'Liquid-gas',d:'At least one liquid and one gas. Example: carbonated drinks.'},
+   {n:'Solid-gas',d:'At least one solid and one gas. Example: fog of ice particles in air.'},
+   {n:'Solid-liquid-gas',d:'At least one each of solid, liquid and gas. Example: soda with ice.'},
+   {n:'Colloidal',c:'Aerosol',d:'Very small insoluble particles suspended in a medium of different matter. Example: smoke, mist.'}]}]},
+ {n:'Signal',d:'Information that crosses or moves within the system.',k:[
+  {n:'Status',d:'A condition of a system; information about its state. Example: an engine temperature gauge.',k:[
+   {n:'Auditory',c:'Tone, word',d:'A condition displayed by a sound. Example: a "pull up" warning.'},
+   {n:'Olfactory',d:'A condition related by smell or particulate count. Example: a CO detector.'},
+   {n:'Tactile',c:'Temperature, pressure, roughness',d:'A condition perceived by touch or direct contact. Example: a vibrating pager.'},
+   {n:'Taste',d:'A condition of a dissolved substance perceived by taste.'},
+   {n:'Visual',c:'Position, displacement',d:'A condition displayed by an image. Example: direction arrows on a switch.'}]},
+  {n:'Control',d:'A command sent to an instrument or apparatus to regulate a mechanism.',k:[
+   {n:'Analog',c:'Oscillatory',d:'A control signal sent by continuous, measurable, variable quantities. Example: a volume knob.'},
+   {n:'Discrete',c:'Binary',d:'A control signal sent by separate, distinct quantities. Example: on/off switch, disk controller commands.'}]}]},
+ {n:'Energy',d:'Energy that crosses or moves within the system. Effort and flow are its power-conjugate complements.',cj:['Effort','Flow'],k:[
+  {n:'Human',cj:['Force','Velocity'],d:'Work performed by a person on a device. Example: steering a car.'},
+  {n:'Acoustic',cj:['Pressure','Particle velocity'],d:'Work performed in producing and transmitting sound.'},
+  {n:'Biological',cj:['Pressure','Volumetric flow'],d:'Work produced by or connected with plants or animals.'},
+  {n:'Chemical',cj:['Affinity','Reaction rate'],d:'Work resulting from reactions that produce or convert substances. Example: a battery.'},
+  {n:'Electrical',cj:['Electromotive force','Current'],d:'Work resulting from the flow of electrons. Example: power from a wall outlet.'},
+  {n:'Electromagnetic',cj:['Effort','Flow'],d:'Energy propagated as electromagnetic waves through space or a medium.',k:[
+   {n:'Optical',cj:['Intensity','Velocity'],d:'Work associated with light and vision. Example: a car visor.'},
+   {n:'Solar',cj:['Intensity','Velocity'],d:'Work produced by or coming from the sun. Example: solar panels.'}]},
+  {n:'Hydraulic',cj:['Pressure','Volumetric flow'],d:'Work from the movement and force of a liquid, including hydrostatic forces.'},
+  {n:'Magnetic',cj:['Magnetomotive force','Magnetic flux rate'],d:'Work from materials that attract like materials, natural or electrically induced.'},
+  {n:'Mechanical',cj:['Effort','Flow'],d:'Energy of moving machine parts, or strain energy of a loaded object.',k:[
+   {n:'Rotational',cj:['Torque','Angular velocity'],d:'Energy from a rotation or virtual rotation. Example: a power screwdriver.'},
+   {n:'Translational',cj:['Force','Linear velocity'],d:'Energy from a translation or virtual translation. Example: a projectile launcher.'}]},
+  {n:'Pneumatic',cj:['Pressure','Mass flow'],d:'Work from a compressed gas flow or pressure source. Example: a BB gun.'},
+  {n:'Radioactive/Nuclear',cj:['Intensity','Decay rate'],d:'Work from particles or rays released by spontaneous disintegration of nuclei.'},
+  {n:'Thermal',cj:['Temperature','Heat flow'],d:'Energy transferred between bodies because of a temperature difference. Example: a coffee maker heater.'}]}
+];
+function indexTree(tree){const m={};const walk=(arr,pre)=>arr.forEach(n=>{const p=[...pre,n.n];m[p.join('>')]={node:n,path:p};if(n.k)walk(n.k,p)});walk(tree,[]);return m}
+const FMAP=indexTree(FB),LMAP=indexTree(FL);
+const REF={short:'Wood et al. (2002)',url:'https://www.nist.gov/publications/functional-basis-engineering-design-reconciling-and-evolving-previous-efforts',
+  full:'Wood, K. L., Stone, R. B., McAdams, D. A., Hirtz, J., & Szykman, S. (2002). A Functional Basis for Engineering Design: Reconciling and Evolving Previous Efforts. National Institute of Standards and Technology (NIST).'};
+function refTables(kind,key){if(kind==='fn')return'Table 5 (function set), Appendix B (definitions)';
+  const n=key&&LMAP[key]?.node;return'Table 3 (flow set), Appendix A (definitions)'+(n&&n.cj?', Table 4 (power conjugates)':'')}
+function refEl(kind,key){return h('span',{class:'src'},'Source: ',h('a',{href:REF.url,target:'_blank',rel:'noopener noreferrer'},REF.short),', '+refTables(kind,key)+'.')}
+
+/* ===================== State ===================== */
+const $=s=>document.querySelector(s);
+const stage=$('#stage'),cv=$('#cv'),vp=$('#vp');
+const BW=152,BH=64,TW=150,GRID=10,KEY='fmb-model-v3';
+const ORDER=['Material','Energy','Signal','none'];
+const uid=()=>Math.random().toString(36).slice(2,9);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const snap=v=>Math.round(v/GRID)*GRID;
+const blank=(mode='quick')=>({v:3,mode,view:'bb',idea:'',overall:'',io:[],blocks:[],edges:[],modules:[],tpos:{},needs:[],chains:[],chainOn:null});
+const MODES={quick:[['bb','Black box'],['fs','Function structure'],['check','Check flows']],
+  guided:[['bb','Black box model'],['cn','Customer needs'],['chain','Function chains'],['agg','Aggregate chains'],['verify','Verify needs']]};
+const isBB=()=>S.view==='bb';
+const isCv=()=>['fs','chain','agg','check','verify'].includes(S.view);
+const showIss=()=>S.view==='check'||S.view==='verify';
+const nextView=()=>{const L=MODES[S.mode],i=L.findIndex(v=>v[0]===S.view);return L[i+1]||null};
+let showOther=true;
+let S=blank(),sel=new Set(),view={x:80,y:80,k:1},hist=[],hi=-1,drag=null,issues=[],palTab='funcs',palQ='',palSig='';
+
+function h(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k.startsWith('on'))e[k]=v;else if(k==='value')e.value=v;else if(k==='innerHTML')e.innerHTML=v;else e.setAttribute(k,v===true?'':v)}kids.flat().forEach(c=>{if(c==null||c===false)return;e.append(c.nodeType?c:document.createTextNode(c))});return e}
+const cls=f=>f&&f.k?f.k.split('>')[0]:'';
+const sec=f=>f&&f.k?f.k.split('>').slice(0,2).join('>'):'';
+const ccls=f=>cls(f)||'none';
+const cvar=c=>c==='Material'?'mat':c==='Energy'?'en':c==='Signal'?'sig':'none';
+const term=k=>k?k.split('>').pop():'';
+const typeName=f=>f&&f.k?f.k.split('>').join(' › ')+(f.cj?' › '+f.cj:''):'No flow type';
+function flowLabel(f){if(!f||!f.k)return'Flow';if(f.cj)return f.cj;const p=f.k.split('>'),l=p[p.length-1];
+  if(p[0]==='Energy')return p.length===1?'Energy':(l==='Radioactive/Nuclear'?'Nuclear':l)+' energy';
+  if(p[0]==='Signal')return p.length===1?'Signal':l+' signal';return p.length===1?'Material':l}
+const lc=s=>s&&!/^[A-Z]{2}/.test(s)?s[0].toLowerCase()+s.slice(1):s;
+const joinList=a=>a.length<2?(a[0]||''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+const className=c=>c==='none'?'Untyped':c;
+
+/* nodes: function blocks + boundary terminals (one per class per side) */
+const TID=(dir,c)=>`T:${dir}:${c}`;
+const isTerm=id=>typeof id==='string'&&id.startsWith('T:');
+function terminals(){const out=[];['in','out'].forEach(dir=>ORDER.forEach(c=>{const items=S.io.filter(t=>t.dir===dir&&ccls(t.flow)===c);
+  if(items.length){const id=TID(dir,c),p=S.tpos[id]||{};out.push({id,dir,c,items,term:true,x:p.x??null,y:p.y??null})}}));return out}
+function node(id){if(isTerm(id))return terminals().find(t=>t.id===id)||null;return S.blocks.find(b=>b.id===id)||null}
+function setXY(id,x,y){if(isTerm(id))S.tpos[id]={x,y};else{const b=S.blocks.find(b=>b.id===id);if(b){b.x=x;b.y=y}}}
+const box=n=>n.term?{x:n.x,y:n.y,w:TW,h:24+n.items.length*17}:{x:n.x,y:n.y,w:BW,h:BH};
+const isBlock=id=>S.blocks.some(b=>b.id===id);
+const isIO=id=>S.io.some(t=>t.id===id);
+const kindOf=id=>id==='overall'?'overall':isBlock(id)?'block':isTerm(id)?(node(id)?'term':null):isIO(id)?'io':S.edges.some(e=>e.id===id)?'edge':S.modules.some(m=>m.id===id)?'module':null;
+const termName=n=>`${className(n.c)} ${n.dir==='in'?'inputs':'outputs'}`;
+const nm=id=>{const n=node(id);if(!n)return'?';return n.term?termName(n):n.text};
+const ins=id=>S.edges.filter(e=>e.to===id), outs=id=>S.edges.filter(e=>e.from===id);
+const eclass=e=>ccls(e.flows[0]);
+const elabels=e=>e.flows.map(f=>f.label);
+function mainIn(id){const L=ins(id).sort((a,b)=>ORDER.indexOf(eclass(a))-ORDER.indexOf(eclass(b)));return L.find(e=>eclass(e)!=='Signal')||L[0]}
+
+/* keep bundles consistent: one arrow per (from, to, class); linked flows follow their black-box flow */
+function normalize(){
+  const ioById=Object.fromEntries(S.io.map(t=>[t.id,t]));const groups=new Map(),used=new Set();
+  S.edges.forEach(e=>e.flows.forEach(f=>{
+    if(f.io&&!ioById[f.io])return;let from=e.from,to=e.to;
+    if(f.io){const t=ioById[f.io];f.k=t.flow.k;f.cj=t.flow.cj;if(f.sync!==false)f.label=t.label;
+      if(isTerm(from)&&t.dir==='in')from=TID('in',ccls(t.flow));if(isTerm(to)&&t.dir==='out')to=TID('out',ccls(t.flow))}
+    if(!node(from)||!node(to)||from===to)return;
+    const key=from+'|'+to+'|'+ccls(f);let g=groups.get(key);
+    if(!g){const id=used.has(e.id)?uid():e.id;used.add(id);g={id,from,to,flows:[]};groups.set(key,g)}
+    if(!g.flows.some(x=>x===f||(f.io&&x.io===f.io)))g.flows.push(f)}));
+  S.edges=[...groups.values()];
+  S.modules.forEach(m=>m.members=m.members.filter(isBlock));S.modules=S.modules.filter(m=>m.members.length);
+  for(const k in S.tpos)if(!node(k))delete S.tpos[k];
+  const ioIds=new Set(S.io.map(t=>t.id)),bIds=new Set(S.blocks.map(b=>b.id)),cIds=new Set(S.chains.map(c=>c.id));
+  S.needs.forEach(n=>{n.flows=n.flows.filter(x=>ioIds.has(x));n.fns=(n.fns||[]).filter(x=>bIds.has(x))});
+  S.blocks.forEach(b=>{if(b.chain&&!cIds.has(b.chain))b.chain=''});if(S.chainOn&&!cIds.has(S.chainOn))S.chainOn=null}
+function syncLabels(){const ioById=Object.fromEntries(S.io.map(t=>[t.id,t]));S.edges.forEach(e=>e.flows.forEach(f=>{if(f.io&&ioById[f.io]&&f.sync!==false)f.label=ioById[f.io].label}))}
+
+function autoText(b){const t=term(b.fn)||'Function';const m=mainIn(b.id),O=outs(b.id).sort((a,c)=>ORDER.indexOf(eclass(a))-ORDER.indexOf(eclass(c)));
+  const A=m?joinList(elabels(m).map(lc)):'';
+  if(t==='Convert'&&m&&O[0])return`Convert ${A} to ${joinList(elabels(O[0]).map(lc))}`;
+  if(t==='Export'&&!m&&O[0])return`Export ${joinList(elabels(O[0]).map(lc))}`;
+  return m?`${t} ${A}`:t}
+function refreshAuto(){S.blocks.forEach(b=>{if(b.auto)b.text=autoText(b)})}
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function commit(opt={}){normalize();if(isCv())layoutIO();refreshAuto();hist=hist.slice(0,hi+1);hist.push(JSON.stringify(S));if(hist.length>80)hist.shift();hi=hist.length-1;save();pruneSel();
+  if(opt.redraw===false){renderInspector();renderChrome()}else if(opt.insp===false){renderCanvas();renderChrome()}else renderAll()}
+function undo(){if(hi>0){hi--;S=JSON.parse(hist[hi]);pruneSel();save();renderAll(true)}}
+function redo(){if(hi<hist.length-1){hi++;S=JSON.parse(hist[hi]);pruneSel();save();renderAll(true)}}
+function pruneSel(){[...sel].forEach(id=>{if(!kindOf(id))sel.delete(id)})}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2800)}
+
+/* ===================== Mutations ===================== */
+function addIO(dir,k,keepSel){const f={k:k||'',cj:null};
+  const t={id:uid(),dir,flow:f,label:k?flowLabel(f):(dir==='in'?'New input':'New output')};
+  S.io.push(t);if(!keepSel)sel=new Set([isBB()?t.id:TID(dir,ccls(f))]);commit();toast(`Added ${dir==='in'?'input':'output'} "${t.label}" to the ${className(ccls(f))} arrow`)}
+function bounds(ids){let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;ids.forEach(id=>{const n=node(id);if(!n||n.x==null)return;const b=box(n);x1=Math.min(x1,b.x);y1=Math.min(y1,b.y);x2=Math.max(x2,b.x+b.w);y2=Math.max(y2,b.y+b.h)});return x1>x2?null:{x:x1,y:y1,w:x2-x1,h:y2-y1}}
+function layoutIO(){const bb=bounds(S.blocks.map(b=>b.id));
+  ['in','out'].forEach(dir=>{let y=bb?bb.y:0;terminals().filter(t=>t.dir===dir).forEach(t=>{
+    if(t.x==null){const x=dir==='in'?(bb?bb.x-TW-160:0):(bb?bb.x+bb.w+160:760);S.tpos[t.id]={x:snap(x),y:snap(y)};t.x=x;t.y=y}
+    y=Math.max(y,S.tpos[t.id].y)+box(node(t.id)).h+60})})}
+function addBlock(k,x,y){const b={id:uid(),fn:k||'',text:term(k)||'New function',auto:!!k,x:snap(x),y:snap(y),chain:S.view==='chain'&&S.chainOn?S.chainOn:''};S.blocks.push(b);sel=new Set([b.id]);commit();return b}
+const routed=t=>S.edges.some(e=>e.flows.some(f=>f.io===t.id));
+const fromIO=t=>({id:uid(),k:t.flow.k,cj:t.flow.cj,label:t.label,io:t.id});
+function mergeLink(from,to,flows){const c=ccls(flows[0]);let e=S.edges.find(x=>x.from===from&&x.to===to&&eclass(x)===c);
+  if(e)flows.forEach(f=>{if(!e.flows.some(g=>(f.io&&g.io===f.io)||(!f.io&&!g.io&&g.k===f.k&&g.label===f.label)))e.flows.push(f)});else{e={id:uid(),from,to,flows};S.edges.push(e)}return e}
+const followed=t=>S.chains.some(c=>c.io===t.id);
+function newChain(ioId){const t=S.io.find(x=>x.id===ioId);const c={id:uid(),name:t?t.label:'Chain '+(S.chains.length+1),io:t?t.id:null};S.chains.push(c);S.chainOn=c.id;
+  if(t&&t.dir==='in'){layoutIO();const bb=bounds(S.blocks.map(b=>b.id));const tid=TID('in',ccls(t.flow));const tp=S.tpos[tid]||{x:0,y:0};
+    const b={id:uid(),fn:'Channel>Import',text:'',auto:true,x:snap(Math.max(tp.x+TW+110,bb?bb.x:0)),y:bb?snap(bb.y+bb.h+110):snap(tp.y),chain:c.id};
+    S.blocks.push(b);mergeLink(tid,b.id,[fromIO(t)]);sel=new Set([b.id])}
+  commit();fit();toast(`Started a chain for ${t?'"'+t.label+'"':'a new flow'}. Add each operation the product performs on it.`)}
+function deleteChain(id){S.chains=S.chains.filter(c=>c.id!==id);S.chainOn=S.chains[0]?.id||null;commit();toast('Chain removed. Its sub-functions are kept, without a chain.')}
+function flowMatches(f,t){return f.io===t.id||(f.label||'').trim().toLowerCase()===t.label.trim().toLowerCase()||(!!f.k&&f.k===t.flow.k&&(f.cj||null)===(t.flow.cj||null))}
+function needFns(n){const ts=n.flows.map(id=>S.io.find(t=>t.id===id)).filter(Boolean);
+  const auto=ts.length?S.blocks.filter(b=>[...ins(b.id),...outs(b.id)].some(e=>e.flows.some(f=>ts.some(t=>flowMatches(f,t))))).map(b=>b.id):[];
+  const manual=(n.fns||[]).filter(id=>!auto.includes(id));return{auto,manual,all:[...auto,...manual]}}
+function dupes(){const out=[],B=S.blocks;for(let i=0;i<B.length;i++)for(let j=i+1;j<B.length;j++){const a=B[i],b=B[j];
+    if(!a.fn||a.fn!==b.fn||(a.chain||'')===(b.chain||''))continue;
+    const la=[...new Set(ins(a.id).flatMap(e=>elabels(e).map(x=>x.toLowerCase())))].sort().join('|'),lb=[...new Set(ins(b.id).flatMap(e=>elabels(e).map(x=>x.toLowerCase())))].sort().join('|');
+    if(a.text.trim().toLowerCase()===b.text.trim().toLowerCase()||(la&&la===lb))out.push([a,b])}return out}
+function mergeBlocks(keep,drop){S.edges.forEach(e=>{if(e.from===drop)e.from=keep;if(e.to===drop)e.to=keep});S.blocks=S.blocks.filter(b=>b.id!==drop);
+  S.modules.forEach(m=>m.members=[...new Set(m.members.map(x=>x===drop?keep:x))]);S.needs.forEach(n=>n.fns=[...new Set((n.fns||[]).map(x=>x===drop?keep:x))]);
+  sel=new Set([keep]);commit();toast('Merged. Arrows from both now connect to one sub-function.')}
+const chainLabel=id=>{const i=S.chains.findIndex(c=>c.id===id);return i<0?'no chain':`Chain ${i+1}: ${S.chains[i].name}`};
+function addLink(from,to,silent){
+  if(from===to)return;const fn=node(from),tn=node(to);if(!fn||!tn)return;
+  if(fn.term&&fn.dir!=='in'){toast('Flows leave the system at output terminals; draw from a function into it.');return}
+  if(tn.term&&tn.dir!=='out'){toast('Input terminals only send flows into the system.');return}
+  let flows;
+  if(tn.term){const u=tn.items.filter(t=>!routed(t));flows=(u.length?u:tn.items).map(fromIO)}
+  else if(fn.term){const u=fn.items.filter(t=>!routed(t));flows=(u.length?u:fn.items).map(fromIO)}
+  else{const m=mainIn(from);flows=m?m.flows.map(f=>({id:uid(),k:f.k,cj:f.cj,label:f.label})):[{id:uid(),k:'',cj:null,label:'Flow'}]}
+  const c=ccls(flows[0]);let e=S.edges.find(x=>x.from===from&&x.to===to&&eclass(x)===c),msg='';
+  if(e){const before=e.flows.length;flows.forEach(f=>{if(!e.flows.some(g=>(f.io&&g.io===f.io)||(!f.io&&!g.io&&g.k===f.k&&g.label===f.label)))e.flows.push(f)});
+    if(e.flows.length===before)e.flows.push({id:uid(),k:flows[0].k,cj:null,label:'New flow'});
+    msg=`Added to the existing ${className(c)} arrow. Name the new flow in the panel.`}
+  else{e={id:uid(),from,to,flows};S.edges.push(e)}
+  sel=new Set([e.id]);if(!silent){commit();if(msg)toast(msg)}}
+function addFlowToEdge(e){let f;const tn=node(e.from).term?node(e.from):node(e.to).term?node(e.to):null;
+  const free=tn&&tn.c===eclass(e)?tn.items.filter(t=>!e.flows.some(x=>x.io===t.id)):[];
+  f=free.length?fromIO(free[0]):{id:uid(),k:e.flows[0]?.k||'',cj:null,label:'New flow'};e.flows.push(f);commit()}
+function deleteSel(){if(!sel.size)return;let n=0;
+  sel.forEach(id=>{const k=kindOf(id);
+    if(k==='edge'){S.edges=S.edges.filter(e=>e.id!==id);n++}
+    else if(k==='block'){S.edges=S.edges.filter(e=>e.from!==id&&e.to!==id);S.blocks=S.blocks.filter(b=>b.id!==id);n++}
+    else if(k==='term'){const t=node(id);S.io=S.io.filter(x=>!t.items.includes(x));n++}
+    else if(k==='io'){S.io=S.io.filter(t=>t.id!==id);n++}
+    else if(k==='module'){S.modules=S.modules.filter(m=>m.id!==id);n++}});
+  sel.clear();commit();toast(`Deleted ${n} item${n>1?'s':''}. Undo restores ${n>1?'them':'it'}.`)}
+function groupSel(){const ids=[...sel].filter(isBlock);if(!ids.length){toast('Select one or more functions first (shift-click or shift-drag).');return}
+  S.modules.forEach(m=>m.members=m.members.filter(x=>!ids.includes(x)));S.modules=S.modules.filter(m=>m.members.length);
+  const m={id:uid(),name:'Module '+(S.modules.length+1),members:ids};S.modules.push(m);sel=new Set([m.id]);commit();
+  setTimeout(()=>{const i=$('#mname');if(i){i.focus();i.select()}},30)}
+function scaffold(){let n=0;layoutIO();
+  terminals().forEach(t=>{
+    if(t.dir==='in'&&!outs(t.id).length){const b={id:uid(),fn:'Channel>Import',text:'',auto:true,x:snap(t.x+TW+100),y:snap(t.y+box(t).h/2-BH/2)};S.blocks.push(b);addLink(t.id,b.id,true);n++}
+    if(t.dir==='out'&&!ins(t.id).length){const b={id:uid(),fn:'Channel>Export',text:'',auto:true,x:snap(t.x-BW-100),y:snap(t.y+box(t).h/2-BH/2)};S.blocks.push(b);addLink(b.id,t.id,true);n++}});
+  if(!n){toast('Every boundary arrow is already connected.');return}
+  sel.clear();commit();fit();toast(`Added ${n} Import/Export function${n>1?'s':''}, one per flow class.`)}
+function setFlowObj(o,nf){const cur=o.flow||o;const wasDef=o.label===flowLabel(cur)||/^(New (in|out)put|New flow|Flow)$/.test(o.label);
+  if(o.flow)o.flow={k:nf.k,cj:nf.cj};else{o.k=nf.k;o.cj=nf.cj}
+  if(wasDef){o.label=flowLabel(nf);if(!o.flow)o.sync=false}
+  if(o.flow&&isCv()&&sel.has(TID(o.dir,ccls(cur))))sel=new Set([TID(o.dir,ccls(nf))]);
+  commit()}
+
+/* ===================== Flow checking ===================== */
+function analyze(){
+  const I=[],add=(sev,msg,ref,group='flow')=>I.push({sev,msg,ref,group});
+  if(S.mode==='guided'){const N=S.needs;
+    if(!N.length)add('info','No customer needs yet. Add them in step 2 and relate each to one or more flows.','need:','need');
+    N.forEach(n=>{const q=`"${n.text||'Untitled need'}"`;
+      if(!n.flows.length)add('warn',`Customer need ${q} isn't related to any flow yet. Every need should relate to at least one flow.`,'need:'+n.id,'need');
+      if(S.blocks.length&&!needFns(n).all.length)add('error',`Customer need ${q} isn't met by any sub-function. Relate it to a flow the model acts on, link a sub-function, or add a chain.`,'need:'+n.id,'meet')});
+    if(N.length)S.io.forEach(t=>{if(!N.some(n=>n.flows.includes(t.id)))add('info',`${t.dir==='in'?'Input':'Output'} "${t.label}" isn't related to any customer need. Check whether this assumed flow is necessary.`,'io:'+t.id,'need')})}
+  const tin=S.io.filter(t=>t.dir==='in'),tout=S.io.filter(t=>t.dir==='out');
+  if(!S.overall.trim())add('error','Name the overall function in the black box, as a verb and noun (e.g. "Brew coffee").','overall');
+  if(!tin.length)add('error','The black box has no input flows. List every material, energy and signal entering the product.','overall');
+  if(!tout.length)add('error','The black box has no output flows. What leaves the product?','overall');
+  S.io.forEach(t=>{const w=t.dir==='in'?'Input':'Output',ref=isBB()?t.id:TID(t.dir,ccls(t.flow));
+    if(!t.flow.k)add('error',`${w} "${t.label}" has no flow type. Choose one from the flow basis.`,ref);
+    else if(t.flow.k.split('>').length===1)add('info',`${w} "${t.label}" uses only the class "${t.flow.k}". A secondary type (e.g. Electrical, Liquid) makes the model clearer.`,ref)});
+  if(!S.blocks.length){if(S.io.length)add('info','No functions yet. Break the overall function into sub-functions connected by these flows.',null);return I}
+  S.io.forEach(t=>{const tid=TID(t.dir,ccls(t.flow));const es=t.dir==='in'?outs(tid):ins(tid);
+    if(!es.some(e=>e.flows.some(f=>f.io===t.id)))add('error',t.dir==='in'?`Input "${t.label}" enters the black box but no function receives it. Add it to an arrow leaving the ${className(ccls(t.flow))} inputs.`:`Output "${t.label}" leaves the black box but no function produces it.`,tid)});
+  S.edges.forEach(e=>{const A=`${nm(e.from)} → ${nm(e.to)}`;
+    e.flows.forEach(f=>{if(!f.k)add('error',`Flow "${f.label}" on ${A} has no flow type.`,e.id)});
+    const seen={};e.flows.forEach(f=>{const k=f.k+'|'+f.label;if(seen[k])add('warn',`The ${className(eclass(e))} arrow ${A} lists "${f.label}" twice.`,e.id);seen[k]=1});
+    [e.from,e.to].forEach(id=>{if(isTerm(id)&&id.split(':')[2]!==eclass(e))add('warn',`The ${className(eclass(e))} arrow ${A} connects to the ${nm(id)}. A flow keeps its class until a Convert function changes it.`,e.id)})});
+  S.blocks.forEach(b=>{const In=ins(b.id).flatMap(e=>e.flows.map(f=>({...f,from:e.from}))),Out=outs(b.id).flatMap(e=>e.flows.map(f=>({...f,to:e.to})));
+    const N=`"${b.text}"`,t=term(b.fn),c=b.fn?b.fn.split('>')[0]:'';
+    if(!b.fn)add('error',`${N} has no function term from the functional basis. Choose one in the panel.`,b.id);
+    if(!In.length)add('error',`${N} has no input flow. Every function acts on at least one flow.`,b.id);
+    const ends=b.fn.startsWith('Provision>Store')||b.fn.startsWith('Control Magnitude>Stop');
+    if(!Out.length)add(ends?'info':'warn',ends?`${N} ends its flow. That fits ${t}; check nothing should continue.`:`${N} has no output flow. Where does the flow go next?`,b.id);
+    if(t==='Transport'&&In.length&&!In.some(f=>cls(f)==='Material'))add('warn',`${N}: Transport moves material, but no input is a material flow. For energy, use Transmit.`,b.id);
+    if(t==='Transmit'&&In.length&&!In.some(f=>cls(f)==='Energy'))add('warn',`${N}: Transmit moves energy, but no input is an energy flow. For material, use Transport.`,b.id);
+    if(t==='Convert'&&In.length&&Out.length&&Out.every(o=>In.some(i=>i.k===o.k)))add('warn',`${N}: Convert should change a flow's form, but every output has the same type as an input.`,b.id);
+    if(c==='Provision'&&[...In,...Out].some(f=>cls(f)==='Signal'))add('warn',`${N}: Provision functions act on material or energy, not signals.`,b.id);
+    if(c==='Signal'){if(Out.length&&!Out.some(f=>cls(f)==='Signal'))add('warn',`${N}: Signal functions produce an output signal flow. Add one.`,b.id);
+      In.filter(i=>cls(i)!=='Signal').forEach(i=>{if(!Out.some(o=>o.k===i.k))add('info',`${N}: the sensed flow "${i.label}" normally passes through unchanged. Consider routing it out as well.`,b.id)})}
+    if(['Actuate','Regulate','Increase','Decrease'].includes(t)&&!In.some(f=>cls(f)==='Signal'||f.k.split('>')[1]==='Human'))add('warn',`${N}: ${t} responds to a control signal. Connect a signal (or human) flow into it.`,b.id);
+    if(t==='Import'&&In.length&&!In.some(f=>isTerm(f.from)))add('warn',`${N}: Import brings a flow across the system boundary; connect it from the black-box inputs.`,b.id);
+    if(t==='Export'&&Out.length&&!Out.some(f=>isTerm(f.to)))add('warn',`${N}: Export sends a flow out of the system; connect it to the black-box outputs.`,b.id);
+    if(['Mix','Couple','Join','Link'].includes(t)&&In.length<2)add('warn',`${N}: ${t} brings two or more flows together but has ${In.length} input flow.`,b.id);
+    if(['Separate','Divide','Extract'].includes(t)&&Out.length&&Out.length<2)add('warn',`${N}: ${t} splits a flow into components but has only one output flow.`,b.id);
+    if(t!=='Convert'&&c!=='Signal'&&b.fn){const loose=c==='Branch'||c==='Connect';
+      Out.forEach(o=>{if(!o.k||cls(o)==='Signal')return;const ok=In.some(i=>loose?cls(i)===cls(o):sec(i)===sec(o));
+        if(!ok&&In.length)add('warn',`${N} outputs "${o.label}" (${typeName(o)}), but no input carries that type. Only Convert changes a flow's type.`,b.id)})}});
+  const mt=TID('in','Material');if(node(mt)&&outs(mt).length){const vis=new Set([mt]),q=[mt];let ok=false;
+    while(q.length){const id=q.shift();if(id.startsWith('T:out:')){ok=true;break}const n=node(id);if(n&&n.fn&&n.fn.startsWith('Provision>Store')&&!outs(id).length){ok=true;break}
+      outs(id).filter(e=>eclass(e)==='Material').forEach(e=>{if(!vis.has(e.to)){vis.add(e.to);q.push(e.to)}})}
+    if(!ok)add('warn','Material enters but never leaves or gets stored. Material is conserved: trace it through to an output or a Store function.',mt)}
+  S.modules.forEach(m=>{if(m.members.length<2)add('info',`Module "${m.name}" holds a single function. Modules usually group several related functions.`,m.id)});
+  return I}
+
+/* ===================== Canvas ===================== */
+function applyView(){vp.setAttribute('transform',`translate(${view.x},${view.y}) scale(${view.k})`);const g=20*view.k;stage.style.backgroundSize=`${g}px ${g}px`;stage.style.backgroundPosition=`${view.x}px ${view.y}px`}
+function wrap(t,max,lines){const w=String(t||'').split(/\s+/);const out=[];let cur='';w.forEach(x=>{if((cur+' '+x).trim().length>max&&cur){out.push(cur);cur=x}else cur=(cur+' '+x).trim()});if(cur)out.push(cur);if(out.length>lines){out.length=lines;out[lines-1]=out[lines-1].replace(/.{0,2}$/,'…')}return out}
+const trunc=(s,n)=>s.length>n?s.slice(0,n-1)+'…':s;
+function textLines(lines,cx,cy,cls,lh){const y0=cy-(lines.length-1)*lh/2+5;return`<text class="${cls}" text-anchor="middle">${lines.map((l,i)=>`<tspan x="${cx}" y="${y0+i*lh}">${esc(l)}</tspan>`).join('')}</text>`}
+let geo={};
+/* orthogonal routing: horizontal and vertical segments only */
+function route(sx,sy,tx,ty,sb,tb,fan){
+  if(tx>=sx+24){
+    if(Math.abs(ty-sy)<3)return{d:`M${sx},${sy} H${tx}`,lx:(sx+tx)/2,ly:sy};
+    const mx=snap(fan?Math.max(sx+20,tx-30):(sx+tx)/2);
+    const seg1=mx-sx,seg2=tx-mx,useTarget=fan||seg2>seg1;
+    return{d:`M${sx},${sy} H${mx} V${ty} H${tx}`,lx:useTarget?(mx+tx)/2:(sx+mx)/2,ly:useTarget?ty:sy}}
+  // target is behind the source: loop around below both nodes
+  const ox=sx+24,ix=tx-24,yc=Math.max(sb.y+sb.h,tb.y+tb.h)+30;
+  return{d:`M${sx},${sy} H${ox} V${yc} H${ix} V${ty} H${tx}`,lx:(ox+ix)/2,ly:yc}}
+function renderCanvas(){
+  syncLabels();issues=analyze();
+  const cn=S.view==='cn';cv.style.display=cn?'none':'';$('#cnview').hidden=!cn;$('.legend').style.display=cn?'none':'';$('#hint').style.display=cn?'none':'';
+  if(cn){$('#empty').hidden=true;renderNeeds();return}
+  if(isBB()){vp.innerHTML=renderBlackBox();renderEmpty();return}
+  vp.innerHTML=structureMarkup(false)+'<g id="tmp"></g>';renderEmpty()}
+function structureMarkup(clean){
+  const T=terminals();const ids=[...S.blocks.map(b=>b.id),...T.map(t=>t.id)];
+  // one connection point per flow class on each side of a node
+  const slot={};ids.forEach(id=>{const n=node(id);if(!n||n.x==null)return;const b=box(n);slot[id]={};
+    ['in','out'].forEach(side=>{const cs=ORDER.filter(c=>S.edges.some(e=>(side==='in'?e.to:e.from)===id&&eclass(e)===c));
+      slot[id][side]=Object.fromEntries(cs.map((c,i)=>[c,b.y+b.h*(i+1)/(cs.length+1)]))})});
+  let s='';geo={};
+  const inChain=S.view==='chain'&&!clean&&!!S.chainOn,cOf=id=>{const b=S.blocks.find(x=>x.id===id);return b?(b.chain||''):null};
+  const dimB=id=>inChain&&cOf(id)!==S.chainOn,dimE=e=>inChain&&cOf(e.from)!==S.chainOn&&cOf(e.to)!==S.chainOn;
+  const hideB=id=>dimB(id)&&!showOther,hideE=e=>dimE(e)&&(!showOther||(cOf(e.from)===null||cOf(e.to)===null)&&!showOther);
+  if(S.mode==='guided'&&!clean&&(S.view==='agg'||S.view==='verify'))S.chains.forEach((c,ci)=>{const bb=bounds(S.blocks.filter(b=>b.chain===c.id).map(b=>b.id));if(!bb)return;
+    s+=`<rect class="lane" x="${bb.x-28}" y="${bb.y-60}" width="${bb.w+56}" height="${bb.h+82}" rx="8"/><text class="lanelab" x="${bb.x-18}" y="${bb.y-42}">Chain ${ci+1}: ${esc(c.name)}</text>`});
+  if(S.blocks.length){const bb=bounds(S.blocks.map(b=>b.id)),p=50;s+=`<rect class="bnd" x="${bb.x-p}" y="${bb.y-p-20}" width="${bb.w+2*p}" height="${bb.h+2*p+34}" rx="10"/><text class="bcap" x="${bb.x-p+12}" y="${bb.y+bb.h+p+4}">System boundary${S.overall?': '+esc(S.overall):''}</text>`}
+  S.modules.forEach(m=>{const bb=bounds(m.members);if(!bb)return;const x=bb.x-18,y=bb.y-38,w=bb.w+36,hh=bb.h+56;
+    s+=`<g data-module="${m.id}"><rect class="mod${sel.has(m.id)?' sel':''}" x="${x}" y="${y}" width="${w}" height="${hh}" rx="6"/><text class="mlab" x="${x+10}" y="${y+18}">${esc(m.name)}</text></g>`});
+  let lab='';
+  S.edges.forEach(e=>{const fn=node(e.from),tn=node(e.to);if(!fn||!tn||!slot[e.from]||!slot[e.to])return;if(hideE(e))return;const dm=dimE(e);const c=eclass(e);
+    const sx=fn.x+box(fn).w,sy=slot[e.from].out[c],tx=tn.x-1,ty=slot[e.to].in[c];if(sy==null||ty==null)return;
+    const fan=outs(e.from).filter(x=>eclass(x)===c).length>1;
+    const r=route(sx,sy,tx,ty,box(fn),box(tn),fan);const d=r.d,mx=r.lx,my=r.ly;geo[e.id]={x:mx,y:my};const on=sel.has(e.id);
+    s+=`<g data-edge="${e.id}"${dm?' class="dim"':''}>${on?`<path class="halo" d="${d}"/>`:''}<path class="fl f-${c}" d="${d}" marker-end="url(#ar-${c})"/><path class="hit" d="${d}"/></g>`;
+    const n=e.flows.length;e.flows.forEach((f,i)=>{lab+=`<text class="elab${on?' sel':''}${dm?' dim':''}" data-edge="${e.id}" data-fi="${i}" x="${mx}" y="${my-7-(n-1-i)*15}" text-anchor="middle">${esc(f.label)}</text>`})});
+  s+=lab;
+  T.forEach(t=>{if(t.x==null)return;const b=box(t),on=sel.has(t.id),v=cvar(t.c);
+    s+=`<g data-node="${t.id}" transform="translate(${t.x},${t.y})" class="${on?'sel':''}" style="cursor:move"><rect class="term" width="${TW}" height="${b.h}" rx="8"/>
+      <rect x="${t.dir==='in'?0:TW-5}" y="0" width="5" height="${b.h}" style="fill:var(--${v})"/>
+      <text class="tcap" x="${t.dir==='in'?0:TW}" y="-6" text-anchor="${t.dir==='in'?'start':'end'}">${esc(termName(t))} (${t.dir==='in'?'from':'to'} outside)</text>
+      ${t.items.map((it,i)=>`<text class="ttxt" x="${t.dir==='in'?14:TW-14}" y="${20+i*17}" text-anchor="${t.dir==='in'?'start':'end'}">${esc(trunc(it.label,19))}</text>`).join('')}
+      ${t.dir==='in'?`<circle class="port" data-port="${t.id}" cx="${TW}" cy="${b.h/2}" r="6"/>`:''}</g>`});
+  S.blocks.forEach(b=>{if(hideB(b.id))return;const on=sel.has(b.id);const Tm=term(b.fn);
+    s+=`<g data-node="${b.id}"${dimB(b.id)?' class="dim"':''} transform="translate(${b.x},${b.y})" style="cursor:move"><text class="bterm${Tm?'':' missing'}" x="2" y="-6">${Tm?esc(Tm):'no basis term'}</text>
+      <rect class="blk${on?' sel':''}" width="${BW}" height="${BH}" rx="3"/>${textLines(wrap(b.text,19,3),BW/2,BH/2,'btxt',16)}
+      <circle class="port" data-port="${b.id}" cx="${BW}" cy="${BH/2}" r="6"/></g>`});
+  if(showIss()&&!clean){const done={},rank={error:3,warn:2,info:1};issues.forEach(i=>{if(!i.ref||i.ref==='overall')return;const k=kindOf(i.ref);let x,y;
+      if(k==='block'||k==='term'){const b=box(node(i.ref));x=b.x+b.w;y=b.y}else if(k==='edge'&&geo[i.ref]){x=geo[i.ref].x+16;y=geo[i.ref].y+10}else if(k==='module'){const bb=bounds(S.modules.find(m=>m.id===i.ref).members);if(!bb)return;x=bb.x+bb.w+18;y=bb.y-38}else return;
+      if(done[i.ref]&&rank[done[i.ref].sev]>=rank[i.sev])return;done[i.ref]={sev:i.sev,x,y}});
+    for(const id in done){const d=done[id];s+=`<g class="iss" data-iss="${id}" style="cursor:pointer"><circle cx="${d.x}" cy="${d.y}" r="9" style="fill:var(--${d.sev==='error'?'err':d.sev})"/><text x="${d.x}" y="${d.y+4}" text-anchor="middle">!</text></g>`}}
+  return s}
+function renderBlackBox(){
+  const grp=dir=>ORDER.map(c=>({c,items:S.io.filter(t=>t.dir===dir&&ccls(t.flow)===c)})).filter(g=>g.items.length);
+  const gi=grp('in'),go_=grp('out'),gh=g=>g.items.length*16+50,tot=L=>L.reduce((a,g)=>a+gh(g),0);
+  const H=Math.max(200,tot(gi)+30,tot(go_)+30),bx=380,bw=300;
+  const lines=S.overall?wrap(S.overall,20,3):['Name the overall function'];
+  let s=`<g data-overall="1"><rect class="bbox${sel.has('overall')?' sel':''}" x="${bx}" y="0" width="${bw}" height="${H}" rx="4"/>${textLines(lines,bx+bw/2,H/2,'bbtitle'+(S.overall?'':' ph'),26)}</g>`;
+  const draw=(L,dir)=>{let y=(H-tot(L))/2;L.forEach(g=>{const ay=y+gh(g)-20,x1=dir==='in'?90:bx+bw,x2=dir==='in'?bx:bx+bw+290,lx=dir==='in'?96:bx+bw+280,an=dir==='in'?'start':'end';
+    const on=g.items.some(t=>sel.has(t.id));
+    s+=`<g data-io="${g.items[0].id}" style="cursor:pointer">${on?`<line class="halo" x1="${x1}" y1="${ay}" x2="${x2}" y2="${ay}"/>`:''}<line class="fl f-${g.c}" x1="${x1}" y1="${ay}" x2="${x2-1}" y2="${ay}" marker-end="url(#ar-${g.c})"/><line class="hit" x1="${x1}" y1="${ay}" x2="${x2}" y2="${ay}"/></g>`;
+    g.items.forEach((t,i)=>{s+=`<text class="elab${sel.has(t.id)?' sel':''}" data-io="${t.id}" x="${lx}" y="${ay-9-(g.items.length-1-i)*16}" text-anchor="${an}">${esc(t.label)}</text>`});
+    s+=`<text class="tcap" x="${lx}" y="${ay+17}" text-anchor="${an}">${g.c==='none'?'No type yet':g.c}</text>`;y+=gh(g)})};
+  draw(gi,'in');draw(go_,'out');return s}
+function renderEmpty(){const E=$('#empty');E.innerHTML='';E.hidden=true;
+  const card=(t,p,btns)=>{E.hidden=false;E.append(h('div',{},h('h3',{},t),h('p',{},p),h('div',{class:'btns'},btns)))};
+  if(S.view==='chain'&&!S.chainOn){const L=S.io.filter(t=>t.dir==='in');
+    if(!L.length)return card('Start a function chain','Each chain follows one input flow, so add input flows to the black box first.',[h('button',{class:'btn primary',onclick:()=>go('bb')},'Go to black box')]);
+    return card('Start a function chain','Be the flow: pick an input flow and follow it through the product to an output. The tool adds its Import function; you add each operation after it.',
+      L.map(t=>h('button',{class:'btn'+(followed(t)?'':' primary'),onclick:()=>newChain(t.id)},t.label+(followed(t)?' (followed)':''))))}
+  if(S.view==='agg'&&!S.blocks.length)return card('Nothing to aggregate yet','Build function chains in step 3 first, then connect them here.',[h('button',{class:'btn primary',onclick:()=>go('chain')},'Go to function chains')]);
+  if(S.view==='fs'&&!S.blocks.length)return card('Build the function structure',S.io.length?'Your black-box flows sit on the left and right, one arrow per flow class. A quick start: give each class an Import or Export function, then fill in the functions between them.':'Add input and output flows in step 1 first, or drag functions from the left onto the canvas.',
+    [S.io.length?h('button',{class:'btn primary',onclick:scaffold},'Add Import and Export functions'):h('button',{class:'btn primary',onclick:()=>go('bb')},'Go to black box')])}
+function fit(){requestAnimationFrame(()=>{let b;try{b=vp.getBBox()}catch(e){}const r=stage.getBoundingClientRect();
+  if(!b||!b.width){view={x:r.width/2-200,y:r.height/2-100,k:1};applyView();return}
+  const pad=60,top=50;const k=Math.max(.25,Math.min(1.3,(r.width-2*pad)/b.width,(r.height-pad-top-40)/b.height));
+  view.k=k;view.x=(r.width-b.width*k)/2-b.x*k;view.y=top+(r.height-top-40-b.height*k)/2-b.y*k;applyView()})}
+function zoomAt(f,cx,cy){const k=Math.max(.2,Math.min(3,view.k*f));view.x=cx-(cx-view.x)*k/view.k;view.y=cy-(cy-view.y)*k/view.k;view.k=k;applyView()}
+function world(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left-view.x)/view.k,y:(e.clientY-r.top-view.y)/view.k}}
+function centerOn(id){const k=kindOf(id);let p;if(k==='block'||k==='term'){const b=box(node(id));p={x:b.x+b.w/2,y:b.y+b.h/2}}else if(k==='edge')p=geo[id];else if(k==='module'){const bb=bounds(S.modules.find(m=>m.id===id).members);p=bb&&{x:bb.x+bb.w/2,y:bb.y+bb.h/2}}
+  if(!p)return;const r=stage.getBoundingClientRect();view.x=r.width/2-p.x*view.k;view.y=r.height/2-p.y*view.k;applyView()}
+
+/* pointer handling */
+cv.addEventListener('pointerdown',e=>{
+  if(e.button===2)return;const t=e.target,shift=e.shiftKey||e.metaKey||e.ctrlKey,w=world(e);
+  const port=t.closest('[data-port]'),nd=t.closest('[data-node]'),ed=t.closest('[data-edge]'),md=t.closest('[data-module]'),io=t.closest('[data-io]'),ov=t.closest('[data-overall]'),is=t.closest('[data-iss]');
+  cv.setPointerCapture(e.pointerId);
+  if(is){sel=new Set([is.dataset.iss]);renderAll();return}
+  if(isBB()){if(io)sel=new Set([io.dataset.io]);else if(ov)sel=new Set(['overall']);else{drag={type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};cv.classList.add('panning');return}
+    renderCanvas();renderInspector();if(ov)setTimeout(()=>$('#overallIn')?.focus(),20);return}
+  if(port){drag={type:'link',from:port.dataset.port};return}
+  if(nd){const id=nd.dataset.node;if(shift){sel.has(id)?sel.delete(id):sel.add(id)}else if(!sel.has(id))sel=new Set([id]);
+    const ids=new Set([...sel].filter(x=>isBlock(x)||isTerm(x)));S.modules.filter(m=>sel.has(m.id)).forEach(m=>m.members.forEach(x=>ids.add(x)));
+    drag={type:'move',start:w,orig:[...ids].map(id=>({id,x:node(id).x,y:node(id).y})),moved:false};renderCanvas();renderInspector();return}
+  if(md){const id=md.dataset.module;if(shift){sel.has(id)?sel.delete(id):sel.add(id)}else sel=new Set([id]);const m=S.modules.find(m=>m.id===id);
+    drag={type:'move',start:w,orig:m.members.map(id=>({id,x:node(id).x,y:node(id).y})),moved:false};renderCanvas();renderInspector();return}
+  if(ed){const id=ed.dataset.edge;if(shift){sel.has(id)?sel.delete(id):sel.add(id)}else sel=new Set([id]);drag=null;renderCanvas();renderInspector();return}
+  if(shift){drag={type:'marq',start:w,add:new Set(sel)};return}
+  drag={type:'pan',sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};cv.classList.add('panning')});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const w=world(e);
+  if(drag.type==='pan'){const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;if(Math.abs(dx)+Math.abs(dy)>3)drag.moved=true;view.x=drag.vx+dx;view.y=drag.vy+dy;applyView()}
+  else if(drag.type==='move'){const dx=w.x-drag.start.x,dy=w.y-drag.start.y;if(Math.abs(dx)+Math.abs(dy)>2)drag.moved=true;if(!drag.moved)return;
+    drag.orig.forEach(o=>setXY(o.id,e.altKey?o.x+dx:snap(o.x+dx),e.altKey?o.y+dy:snap(o.y+dy)));renderCanvas()}
+  else if(drag.type==='link'){const n=node(drag.from),b=box(n);const sx=b.x+b.w,sy=b.y+b.h/2;const mx=Math.max(sx+20,(sx+w.x)/2);$('#tmp').innerHTML=`<path class="fl f-none" d="M${sx},${sy} H${mx} V${w.y} H${w.x}"/>`}
+  else if(drag.type==='marq'){const x=Math.min(w.x,drag.start.x),y=Math.min(w.y,drag.start.y),ww=Math.abs(w.x-drag.start.x),hh=Math.abs(w.y-drag.start.y);
+    drag.rect={x,y,w:ww,h:hh};$('#tmp').innerHTML=`<rect class="marq" x="${x}" y="${y}" width="${ww}" height="${hh}"/>`}});
+cv.addEventListener('pointerup',e=>{const d=drag;drag=null;cv.classList.remove('panning');if(!d)return;
+  if(d.type==='pan'&&!d.moved){if(sel.size){sel.clear();renderCanvas();renderInspector()}}
+  else if(d.type==='move'&&d.moved)commit({insp:false});
+  else if(d.type==='link'){$('#tmp').innerHTML='';const el=document.elementFromPoint(e.clientX,e.clientY);const tn=el&&el.closest('[data-node]');if(tn&&tn.dataset.node!==d.from)addLink(d.from,tn.dataset.node)}
+  else if(d.type==='marq'){const r=d.rect;sel=d.add;if(r)[...S.blocks,...terminals()].forEach(n=>{if(n.x==null)return;const b=box(n);if(b.x>=r.x&&b.y>=r.y&&b.x+b.w<=r.x+r.w&&b.y+b.h<=r.y+r.h)sel.add(n.id)});renderCanvas();renderInspector()}});
+cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*.0015),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+cv.addEventListener('dblclick',e=>{const t=e.target;
+  const nd=t.closest('[data-node]'),ed=t.closest('[data-edge]'),md=t.closest('[data-module]'),io=t.closest('[data-io]'),ov=t.closest('[data-overall]');
+  if(ov){inlineEdit(ov,S.overall,v=>{S.overall=v;commit()});return}
+  if(io){const o=S.io.find(x=>x.id===io.dataset.io);inlineEdit(io,o.label,v=>{o.label=v;commit()});return}
+  if(nd){const n=node(nd.dataset.node);if(n.term){sel=new Set([n.id]);renderAll();return}inlineEdit(nd.querySelector('rect'),n.text,v=>{n.text=v;n.auto=false;commit()});return}
+  if(ed){const x=S.edges.find(x=>x.id===ed.dataset.edge);const fi=+(t.closest('[data-fi]')?.dataset.fi??0);const f=x.flows[fi];if(!f)return;
+    const el=vp.querySelector(`[data-edge="${x.id}"][data-fi="${fi}"]`)||ed;inlineEdit(el,f.label,v=>{f.label=v;f.sync=false;commit()});return}
+  if(md){const m=S.modules.find(m=>m.id===md.dataset.module);inlineEdit(md.querySelector('text'),m.name,v=>{m.name=v;commit()})}});
+function inlineEdit(target,val,done){const r=target.getBoundingClientRect(),sr=stage.getBoundingClientRect();
+  const inp=h('input',{class:'inline',value:val,'aria-label':'Edit text'});const w=Math.max(r.width,170);
+  Object.assign(inp.style,{left:Math.max(4,r.left-sr.left+r.width/2-w/2)+'px',top:(r.top-sr.top+r.height/2-17)+'px',width:w+'px'});
+  stage.append(inp);inp.focus();inp.select();let fin=false;
+  const end=ok=>{if(fin)return;fin=true;const v=inp.value.trim();inp.remove();if(ok&&v&&v!==val)done(v)};
+  inp.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')end(true);if(e.key==='Escape')end(false)};inp.onblur=()=>end(true)}
+stage.addEventListener('dragover',e=>{if(isCv())e.preventDefault()});
+stage.addEventListener('drop',e=>{const k=e.dataTransfer.getData('text/fn');if(!k||!isCv())return;e.preventDefault();const w=world(e);addBlock(k,w.x-BW/2,w.y-BH/2)});
+document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,select')||$('#dlg').open)return;const mod=e.ctrlKey||e.metaKey;
+  if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}
+  else if(mod&&e.key.toLowerCase()==='y'){e.preventDefault();redo()}
+  else if(mod&&e.key.toLowerCase()==='g'&&isCv()){e.preventDefault();groupSel()}
+  else if((e.key==='Delete'||e.key==='Backspace')&&sel.size&&!sel.has('overall')){e.preventDefault();deleteSel()}
+  else if(e.key==='Escape'){sel.clear();renderCanvas();renderInspector()}});
+
+/* ===================== Palette ===================== */
+const STEPGUIDE={
+ quick:{bb:['Step 1: Black box','Describe what the product does as one overall function (verb + noun), then list every flow crossing its boundary with + In / + Out. Flows of the same class share one arrow, so the black box has at most one material, one energy and one signal arrow on each side.'],
+  fs:['Step 2: Function structure','Drag functions onto the canvas, or tap one to add it. Drag from a block\'s right-side dot onto another block to draw an arrow. Each block has one arrow per flow class on each side; drawing again adds a flow to the existing arrow. Double-click a block, flow name or module name to rename it.'],
+  check:['Step 3: Check flows','Each issue links to the block or arrow it concerns. Errors are gaps in the model; warnings flag places where the functional basis suggests a different term or flow type.']},
+ guided:{bb:['Step 1: Create black box model','Write the product idea and its basic function, then list every flow crossing the boundary. Mark flows that downstream design decisions will settle with "(?)". Hand (material) and weight (energy) flows are easy to miss but important.'],
+  cn:['Step 2: Correlate customer needs','Relate each customer need to one or more flows. Every need should relate to at least one flow; this also checks whether the assumed input and output flows are necessary.'],
+  chain:['Step 3: Create function chains','Be the flow. Follow one input flow through to the output, listing every operation the product performs on or with it. Each operation is a sub-function. Diagram the sequence, including any other flows it needs.'],
+  agg:['Step 4: Aggregate function chains','Connect the chains with flows where they interact. Add or remove sub-functions as needed, for example when two chains repeat the same sub-function.'],
+  verify:['Step 5: Verify customer needs are met','Cross-reference the customer needs with the functional model. Every need must be met by one or more sub-functions; if not, add sub-functions or chains. Iteration is common.']}};
+function renderNeedFlows(){const P=$('#pal');P.innerHTML='';
+  if(!S.io.length){P.append(h('p',{class:'note',style:'padding:0 8px'},'No black-box flows yet. Add them in step 1.'));return}
+  P.append(h('p',{class:'note',style:'padding:0 8px'},'Black-box flows and how many needs relate to each. A flow with none may be unnecessary.'));
+  ['in','out'].forEach(d=>{P.append(h('div',{class:'crumb',style:'padding:6px 8px 2px'},d==='in'?'Inputs':'Outputs'));
+    S.io.filter(t=>t.dir===d).forEach(t=>{const n=S.needs.filter(x=>x.flows.includes(t.id)).length;
+      P.append(h('div',{class:'row'},h('span',{class:'chip c-'+ccls(t.flow)}),h('span',{class:'nm'},t.label),h('span',{class:'cr',style:n?'':'color:var(--warn)'},n?`${n} need${n>1?'s':''}`:'no needs')))})})}
+function renderPalette(force){
+  const tab=isBB()?'flows':palTab,sig=S.mode+S.view+tab+palQ+(S.view==='cn'?JSON.stringify(S.needs.map(n=>n.flows))+S.io.map(t=>t.label).join():'');if(!force&&sig===palSig)return;palSig=sig;
+  const G=STEPGUIDE[S.mode][S.view],g=$('#guide');g.innerHTML='';g.append(h('h2',{},G[0]),h('p',{},G[1]));
+  const T=$('#paltabs');T.innerHTML='';$('.search').style.display=S.view==='cn'?'none':'';
+  if(S.view==='cn'){T.append(h('button',{role:'tab','aria-selected':'true'},'Flow coverage'));renderNeedFlows();return}
+  if(isCv())['funcs','flows'].forEach(k=>T.append(h('button',{role:'tab','aria-selected':String(tab===k),onclick:()=>{palTab=k;renderPalette()}},k==='funcs'?'Functions':'Flows')));
+  else T.append(h('button',{role:'tab','aria-selected':'true'},'Flows'));
+  const P=$('#pal');P.innerHTML='';const tree=tab==='funcs'?FB:FL,map=tab==='funcs'?FMAP:LMAP,q=palQ.trim().toLowerCase();
+  const row=(key,lvl,crumb)=>{const{node:n,path}=map[key];const r=h('div',{class:'row l'+lvl,tabindex:'0','data-key':key,title:n.d||''});
+    if(tab==='flows')r.append(h('span',{class:'chip c-'+path[0]}));
+    r.append(h('span',{class:'nm'},n.n),h('span',{class:'cr'},crumb?path.slice(0,-1).join(' › '):(n.c||'')));
+    if(tab==='flows'){r.append(h('button',{class:'mini',title:'Add as black-box input',onclick:ev=>{ev.stopPropagation();addIO('in',key)}},'+ In'),h('button',{class:'mini',title:'Add as black-box output',onclick:ev=>{ev.stopPropagation();addIO('out',key)}},'+ Out'));
+      r.onclick=()=>applyFlowFromPalette(key)}
+    else{r.draggable=true;r.ondragstart=ev=>ev.dataTransfer.setData('text/fn',key);r.onclick=()=>{const rr=stage.getBoundingClientRect();const n=S.blocks.length%6;addBlock(key,(rr.width/2-view.x)/view.k-BW/2+n*20,(rr.height/2-view.y)/view.k-BH/2+n*20)}}
+    r.onkeydown=ev=>{if(ev.key==='Enter')r.click()};r.onmouseenter=r.onfocus=()=>showDef(map,key);return r};
+  if(q){const hits=Object.keys(map).filter(k=>{const n=map[k].node;return n.n.toLowerCase().includes(q)||(n.c||'').toLowerCase().includes(q)});
+    if(!hits.length)P.append(h('p',{class:'note',style:'padding:0 8px'},`No term or synonym matches "${palQ}". Try a related verb or a broader word.`));
+    hits.forEach(k=>P.append(row(k,1,true)));return}
+  tree.forEach(c=>{const d=h('details',{open:tab==='flows'||null});const sm=h('summary',{},c.n);sm.onmouseenter=()=>showDef(map,c.n);
+    if(tab==='flows')sm.append(h('span',{style:'flex:1'}),h('button',{class:'mini',onclick:ev=>{ev.preventDefault();addIO('in',c.n)}},'+ In'),h('button',{class:'mini',onclick:ev=>{ev.preventDefault();addIO('out',c.n)}},'+ Out'));
+    d.append(sm);(c.k||[]).forEach(s=>{d.append(row(c.n+'>'+s.n,1));(s.k||[]).forEach(t=>d.append(row(c.n+'>'+s.n+'>'+t.n,2)))});P.append(d)})}
+function showDef(map,key){const m=map[key];if(!m)return;const n=m.node,D=$('#def');D.innerHTML='';
+  D.append(h('span',{class:'crumb'},m.path.slice(0,-1).join(' › ')||'Class'),h('b',{},n.n),h('p',{},n.d||''));
+  if(n.c)D.append(h('p',{},'Synonyms: '+n.c));if(n.cj)D.append(h('p',{},`Effort: ${n.cj[0]}. Flow: ${n.cj[1]}.`));D.append(refEl(map===FMAP?'fn':'fl',key))}
+function applyFlowFromPalette(key){const id=[...sel][0],k=id&&kindOf(id),f={k,cj:null};
+  if(k==='io'){setFlowObj(S.io.find(t=>t.id===id),{k:key,cj:null});toast(`Set the type to ${term(key)}`);return}
+  if(k==='edge'){const e=S.edges.find(x=>x.id===id);e.flows.push({id:uid(),k:key,cj:null,label:flowLabel({k:key})});commit();
+    toast(cls({k:key})===eclass(e)||!e.flows[0].k?`Added ${term(key)} to this arrow`:`Added ${term(key)} as a separate ${cls({k:key})} arrow between the same blocks`);return}
+  if(k==='term'){addIO(node(id).dir,key);return}
+  toast(isBB()?'Use + In or + Out to add this flow to the black box.':'Select an arrow first, then click a flow type to add it to that arrow.')}
+
+/* ===================== Inspector ===================== */
+function picker(tree,map,key,onChange,heads){const wrap=h('div',{class:'picker'});const path=key?key.split('>'):[];let level=tree,i=0;
+  while(level&&level.length){const cur=path[i];const s=h('select',{'aria-label':heads[i]||'Level'});
+    s.append(h('option',{value:''},i===0?'Choose…':'(stop at this level)'));level.forEach(n=>{const o=h('option',{value:n.n},n.n);if(n.n===cur)o.selected=true;s.append(o)});
+    const idx=i;s.onchange=()=>{const np=path.slice(0,idx);if(s.value)np.push(s.value);onChange(np.join('>'))};
+    wrap.append(h('label',{},h('span',{},heads[i]||'Level'),s));if(!cur)break;const nd=level.find(n=>n.n===cur);if(!nd)break;level=nd.k;i++}
+  return wrap}
+function flowFields(o){const isIo=!!o.flow,linked=!isIo&&o.io&&S.io.find(t=>t.id===o.io),F=isIo?o.flow:o,frag=h('div');
+  frag.append(h('label',{class:'fld'},h('span',{},'Name shown on the arrow'),h('input',{value:o.label,oninput:e=>{o.label=e.target.value;if(!isIo)o.sync=false;renderCanvas()},onchange:()=>commit({insp:false})})));
+  const target=linked||o,TF=target.flow||target;
+  if(linked)frag.append(h('p',{class:'note'},`Linked to black-box ${linked.dir==='in'?'input':'output'} "${linked.label}". Changing the type here changes it there too.`));
+  frag.append(picker(FL,LMAP,TF.k,k=>setFlowObj(target,{k,cj:null}),['Flow class','Secondary','Tertiary']));
+  const nd=TF.k&&LMAP[TF.k]?.node;
+  if(nd&&nd.cj){const s=h('select',{'aria-label':'Power conjugate'});s.append(h('option',{value:''},'(energy, no complement)'));
+    nd.cj.forEach((c,i)=>{const op=h('option',{value:c},`${c} (${i?'flow':'effort'})`);if(TF.cj===c)op.selected=true;s.append(op)});
+    s.onchange=()=>setFlowObj(target,{k:TF.k,cj:s.value||null});frag.append(h('label',{class:'fld picker'},h('span',{},'Power conjugate complement'),s))}
+  if(nd)frag.append(h('div',{class:'defn'},nd.d||'',nd.c?h('i',{},'Synonyms: '+nd.c):null,refEl('fl',TF.k)));
+  if(F.k&&o.label!==flowLabel(F))frag.append(h('button',{class:'btn',onclick:()=>{o.label=flowLabel(F);if(!isIo)o.sync=false;commit()}},'Use basis name'));
+  return frag}
+function ioRow(t){return h('button',{class:'li'+(sel.has(t.id)?' sel':''),onclick:()=>{sel=new Set([t.id]);renderCanvas();renderInspector()}},
+  h('span',{class:'chip c-'+ccls(t.flow)}),h('span',{class:'t'},t.label,h('small',{},typeName(t.flow))))}
+function renderInspector(){const R=$('#right');R.innerHTML='';
+  const ids=[...sel].filter(kindOf);
+  if(S.view==='cn'){renderNeedsPanel(R);return}
+  if(S.view==='verify'&&ids.length!==1){renderVerify(R);renderIssues(R,['flow'],'Flow check');return}
+  if(S.view==='verify')R.append(h('div',{class:'btns',style:'margin-top:0'},h('button',{class:'btn',onclick:()=>{sel.clear();renderAll()}},'Back to verification')));
+  if(S.view==='check')renderIssues(R,['flow'],'Flow check');
+  if(ids.length>1){const nb=ids.filter(isBlock).length;R.append(h('h2',{},`${ids.length} items selected`),
+      h('p',{class:'note'},nb?`${nb} function${nb>1?'s':''} can be grouped into a module, drawn as a dashed box around them.`:'Select functions (not only arrows) to make a module.'),
+      h('div',{class:'btns'},h('button',{class:'btn primary',disabled:!nb,onclick:groupSel},'Group as module'),h('button',{class:'btn danger',onclick:deleteSel},'Delete selected')));return}
+  const id=ids[0],k=id&&kindOf(id);
+  if(k==='io'){const t=S.io.find(x=>x.id===id);R.append(h('h2',{},t.dir==='in'?'Input flow':'Output flow'),h('p',{class:'note'},`Shown on the ${className(ccls(t.flow))} arrow ${t.dir==='in'?'into':'out of'} the black box. Changes here appear in every step.`),flowFields(t),
+      h('div',{class:'btns'},h('button',{class:'btn danger',onclick:deleteSel},'Delete flow'),h('button',{class:'btn',onclick:()=>{sel.clear();renderAll()}},'Back to black box')));return}
+  if(k==='term'){const n=node(id);R.append(h('h2',{},termName(n)),h('p',{class:'note'},`One arrow carries every ${n.c==='none'?'untyped':n.c.toLowerCase()} flow ${n.dir==='in'?'entering':'leaving'} the black box. Edits here also change the black box.`));
+    n.items.forEach(t=>R.append(h('div',{class:'card'},flowFields(t),h('div',{class:'btns'},h('button',{class:'btn danger',onclick:()=>{S.io=S.io.filter(x=>x!==t);commit()}},'Remove this flow')))));
+    R.append(h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>addIO(n.dir,n.c==='none'?'':n.c,true)},`Add ${n.dir==='in'?'an input':'an output'} flow`)));return}
+  if(k==='block'){const b=node(id);const m=b.fn&&FMAP[b.fn]?.node;
+    R.append(h('h2',{},'Function'),h('label',{class:'fld'},h('span',{},'Text on the block (verb + object)'),h('input',{value:b.text,oninput:e=>{b.text=e.target.value;b.auto=false;renderCanvas()},onchange:()=>commit({insp:false})})));
+    R.append(picker(FB,FMAP,b.fn,k=>{b.fn=k;commit()},['Function class','Secondary','Tertiary']));
+    if(m)R.append(h('div',{class:'defn'},m.d||'',m.c?h('i',{},'Synonyms: '+m.c):null,refEl('fn',b.fn)));
+    if(S.mode==='guided'){const cs=h('select',{'aria-label':'Function chain',onchange:e=>{b.chain=e.target.value;commit()}});cs.append(h('option',{value:''},'(no chain)'));
+      S.chains.forEach((c,i)=>{const o=h('option',{value:c.id},`Chain ${i+1}: ${c.name}`);if(b.chain===c.id)o.selected=true;cs.append(o)});R.append(h('label',{class:'fld picker'},h('span',{},'Function chain'),cs));
+      const met=S.needs.filter(n=>needFns(n).all.includes(b.id));if(met.length)R.append(h('p',{class:'note'},'Helps meet: '+met.map(n=>n.text).join('; ')))}
+    R.append(h('div',{class:'btns'},h('button',{class:'btn',disabled:b.auto,onclick:()=>{b.auto=true;commit()}},'Name from term and flows'),h('button',{class:'btn danger',onclick:deleteSel},'Delete function')));
+    const fl=(lst,dir)=>lst.length?h('div',{class:'list'},lst.map(e=>h('button',{class:'li',onclick:()=>{sel=new Set([e.id]);renderAll()}},h('span',{class:'chip c-'+eclass(e)}),h('span',{class:'t'},joinList(elabels(e)),h('small',{},`${className(eclass(e))} ${dir==='in'?'from':'to'} ${nm(dir==='in'?e.from:e.to)}`))))):h('p',{class:'note'},'None yet. Drag from a right-side dot to draw an arrow.');
+    R.append(h('h3',{},'Input arrows'),fl(ins(id),'in'),h('h3',{},'Output arrows'),fl(outs(id),'out'));
+    const mm=S.modules.find(m=>m.members.includes(id));R.append(h('h3',{},'Module'),mm?h('button',{class:'li',onclick:()=>{sel=new Set([mm.id]);renderAll()}},h('span',{class:'t'},mm.name)):h('p',{class:'note'},'Not in a module.'));return}
+  if(k==='edge'){const e=S.edges.find(x=>x.id===id);
+    R.append(h('h2',{},`${className(eclass(e))} arrow`),h('p',{class:'note'},`${nm(e.from)} → ${nm(e.to)}. Every flow below is written on this one arrow.`));
+    e.flows.forEach((f,i)=>R.append(h('div',{class:'card'},flowFields(f),h('div',{class:'btns'},h('button',{class:'btn danger',onclick:()=>{e.flows.splice(i,1);if(!e.flows.length)S.edges=S.edges.filter(x=>x!==e);commit()}},e.flows.length>1?'Remove this flow':'Remove flow and arrow')))));
+    R.append(h('div',{class:'btns'},h('button',{class:'btn primary',onclick:()=>addFlowToEdge(e)},'Add another flow to this arrow'),h('button',{class:'btn danger',onclick:deleteSel},'Delete arrow')),
+      h('p',{class:'note'},'Tip: with this arrow selected, click a flow type in the left panel to add it. A flow of a different class becomes its own arrow.'));return}
+  if(k==='module'){const m=S.modules.find(x=>x.id===id);R.append(h('h2',{},'Module'),h('label',{class:'fld'},h('span',{},'Module name'),h('input',{id:'mname',value:m.name,oninput:e=>{m.name=e.target.value;renderCanvas()},onchange:()=>commit({insp:false})})),
+      h('h3',{},`Functions (${m.members.length})`),h('div',{class:'list'},m.members.map(x=>h('button',{class:'li',onclick:()=>{sel=new Set([x]);renderAll()}},h('span',{class:'t'},nm(x),h('small',{},term(node(x).fn)||'no basis term'))))),
+      h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>{sel=new Set(m.members);renderAll()}},'Select its functions'),h('button',{class:'btn danger',onclick:deleteSel},'Ungroup')),
+      h('p',{class:'note'},'Drag the module name to move the whole group. Ungrouping keeps the functions.'));return}
+  if(isBB()||k==='overall'){
+    R.append(h('h2',{},'Black box'),h('label',{class:'fld'},h('span',{},'Product idea'),h('textarea',{rows:'2',placeholder:'e.g. a handheld cordless device for picking up dust, dirt and other debris around the house',oninput:e=>{S.idea=e.target.value},onchange:()=>commit({redraw:false})},S.idea||'')),
+      h('label',{class:'fld'},h('span',{},S.mode==='guided'?'Basic function (verb + noun)':'Overall function (verb + noun)'),h('input',{id:'overallIn',value:S.overall,placeholder:'e.g. Brew coffee',oninput:e=>{S.overall=e.target.value;renderCanvas()},onchange:()=>commit({insp:false})})));
+    ['in','out'].forEach(d=>{const L=S.io.filter(t=>t.dir===d).sort((a,b)=>ORDER.indexOf(ccls(a.flow))-ORDER.indexOf(ccls(b.flow)));R.append(h('h3',{},d==='in'?`Input flows (${L.length})`:`Output flows (${L.length})`),
+      L.length?h('div',{class:'list'},L.map(ioRow)):h('p',{class:'note'},d==='in'?'What material, energy and signals enter the product?':'What leaves the product, including waste and losses?'),
+      h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>addIO(d,'')},d==='in'?'Add input':'Add output')))});
+    const nx=nextView();if(isBB()&&nx)R.append(h('div',{class:'btns',style:'margin-top:20px'},h('button',{class:'btn primary',onclick:()=>go(nx[0])},'Continue to '+nx[1].toLowerCase())));return}
+  if(S.view==='chain'){renderChainPanel(R);return}
+  if(S.view==='agg')renderAggPanel(R);
+  if(S.view==='fs'||S.view==='agg'){const n=issues.filter(i=>i.sev!=='info'&&i.group!=='need').length;
+    R.append(h('h2',{},S.view==='agg'?'Model summary':'Function structure'),h('p',{class:'note'},`${S.blocks.length} functions, ${S.edges.length} arrows carrying ${S.edges.reduce((a,e)=>a+e.flows.length,0)} flows, ${S.modules.length} modules.`),
+      h('div',{class:'btns'},h('button',{class:'btn',onclick:scaffold},'Add Import/Export for open boundary arrows'),h('button',{class:'btn primary',onclick:()=>go(S.mode==='guided'?'verify':'check')},(S.mode==='guided'?'Verify needs':'Check flows')+(n?` (${n} to review)`:''))));
+    if(S.modules.length)R.append(h('h3',{},'Modules'),h('div',{class:'list'},S.modules.map(m=>h('button',{class:'li',onclick:()=>{sel=new Set([m.id]);renderAll()}},h('span',{class:'t'},m.name,h('small',{},`${m.members.length} functions`))))));
+    R.append(h('h3',{},'Controls'),h('div',{class:'kbd',innerHTML:'Drag background to pan, scroll to zoom.<br>Click an arrow to list, rename or add the flows it carries.<br><kbd>Shift</kbd>-click or <kbd>Shift</kbd>-drag to select several.<br>Double-click to rename. <kbd>Del</kbd> removes, <kbd>Ctrl</kbd>+<kbd>G</kbd> groups, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes.<br>Hold <kbd>Alt</kbd> while dragging to move off the grid.'}))}}
+function renderIssues(R,groups=['flow'],title='Flow check'){const list=issues.filter(i=>groups.includes(i.group));const c={error:0,warn:0,info:0};list.forEach(i=>c[i.sev]++);
+  R.append(h('h2',{},title));
+  R.append(h('p',{class:'summary'},list.length?`${c.error} error${c.error===1?'':'s'}, ${c.warn} warning${c.warn===1?'':'s'}, ${c.info} note${c.info===1?'':'s'}.`:'No issues found. Every boundary flow is connected and the functions follow the basis rules this tool checks.'));
+  const order={error:0,warn:1,info:2};const bx=h('div',{style:'margin-bottom:18px'});
+  [...list].sort((a,b)=>order[a.sev]-order[b.sev]).forEach(i=>bx.append(h('div',{class:'issue',tabindex:'0',role:'button',onclick:()=>{if(issueClick(i))return;if(i.ref==='overall'){go('bb');sel=new Set(['overall']);renderAll();return}if(i.ref){sel=new Set([i.ref]);renderAll();centerOn(i.ref)}}},h('span',{class:'dot d-'+i.sev,title:i.sev}),h('span',{},i.msg))));
+  R.append(bx)}
+
+function issueClick(i){const r=i.ref||'';
+  if(r.startsWith('io:')){go('bb');sel=new Set([r.slice(3)]);renderAll();return true}
+  if(r.startsWith('need:')){const n=S.needs.find(x=>'need:'+x.id===r);if(S.view==='verify'&&n){sel=new Set(needFns(n).all);renderCanvas();renderChrome();return true}
+    go('cn');if(n)setTimeout(()=>{const el=document.querySelector(`[data-need="${n.id}"] input[data-f="text"]`);if(el){el.focus();el.scrollIntoView({block:'center'})}},40);return true}
+  return false}
+/* ----- Step 2: customer needs table ----- */
+const IMP=['Must','5','4','3','2','1'];
+function renderNeeds(){const V=$('#cnview');const sx=V.scrollTop;V.innerHTML='';
+  const pasteTa=h('textarea',{placeholder:'One need per line: Group, need and importance separated by tabs (paste straight from Excel or Word)'});
+  V.append(h('h2',{},'Customer needs'),h('p',{class:'note'},'Relate each customer need to one or more black-box flows. Importance runs from 1 (low) to 5 (high), or Must.'),
+    h('div',{class:'btns'},h('button',{class:'btn primary',onclick:()=>{S.needs.push({id:uid(),group:'',text:'',imp:'3',flows:[],fns:[]});commit();setTimeout(()=>{const r=[...document.querySelectorAll('#cnview tbody tr')].pop();r?.querySelector('input[data-f="text"]')?.focus()},40)}},'Add need'),h('span',{style:'flex:1'}),clearBtn()),
+    h('details',{},h('summary',{},'Paste rows from a spreadsheet'),pasteTa,h('button',{class:'btn',onclick:()=>{const n=pasteNeeds(pasteTa.value);if(n){commit();toast(`Added ${n} need${n>1?'s':''}`)}else toast('No rows found. Put each need on its own line.')}},'Add pasted rows')));
+  if(!S.io.length)V.append(h('p',{class:'note',style:'color:var(--warn)'},'The black box has no flows yet, so there is nothing to relate needs to. Add flows in step 1.'));
+  const tb=h('tbody');
+  S.needs.forEach((n,i)=>{const tr=h('tr',{'data-need':n.id,class:n.flows.length?'':'nofl'});
+    const inp=(f,ph)=>h('input',{value:n[f]||'','data-f':f,placeholder:ph,'aria-label':ph,oninput:e=>{n[f]=e.target.value},onchange:()=>commit({redraw:false})});
+    const imp=h('select',{'aria-label':'Importance',onchange:e=>{n.imp=e.target.value;commit({redraw:false})}});imp.append(h('option',{value:''},'–'));IMP.forEach(v=>{const o=h('option',{value:v},v);if(String(n.imp)===v)o.selected=true;imp.append(o)});
+    const chips=h('div',{class:'chips'});n.flows.forEach(id=>{const t=S.io.find(x=>x.id===id);if(!t)return;
+      chips.append(h('span',{class:'fchip',title:`${t.dir==='in'?'Input':'Output'}: ${typeName(t.flow)}`},h('span',{class:'chip c-'+ccls(t.flow)}),t.label,h('button',{'aria-label':'Remove '+t.label,onclick:()=>{n.flows=n.flows.filter(x=>x!==id);commit()}},'×')))});
+    const add=h('select',{class:'addsel','aria-label':'Relate a flow',onchange:e=>{if(e.target.value){n.flows.push(e.target.value);commit()}}});add.append(h('option',{value:''},n.flows.length?'Add flow…':'Relate a flow…'));
+    ['in','out'].forEach(d=>{const og=h('optgroup',{label:d==='in'?'Inputs':'Outputs'});S.io.filter(t=>t.dir===d&&!n.flows.includes(t.id)).forEach(t=>og.append(h('option',{value:t.id},t.label)));if(og.children.length)add.append(og)});
+    chips.append(add);
+    tr.append(h('td',{class:'n'},String(i+1)),h('td',{style:'width:18%'},inp('group','Group')),h('td',{style:'width:30%'},inp('text','Customer need')),h('td',{style:'width:84px'},imp),h('td',{},chips),
+      h('td',{style:'width:32px'},h('button',{class:'btn',style:'padding:2px 8px','aria-label':'Delete need',onclick:()=>{S.needs=S.needs.filter(x=>x!==n);commit()}},'×')));tb.append(tr)});
+  if(!S.needs.length)tb.append(h('tr',{},h('td',{colspan:'6',class:'note',style:'padding:14px'},'No customer needs yet. Add them one at a time or paste a table.')));
+  V.append(h('div',{class:'cnwrap'},h('table',{},h('thead',{},h('tr',{},h('th',{},'#'),h('th',{},'Group'),h('th',{},'Customer need'),h('th',{},'Importance'),h('th',{},'Related flows'),h('th',{}))),tb)));
+  V.scrollTop=sx}
+function pasteNeeds(txt){let n=0;txt.split(/\r?\n/).forEach(line=>{if(!line.trim())return;let c=line.split('\t');if(c.length===1)c=line.split(/\s{2,}|\s*[|;]\s*/);c=c.map(x=>x.trim());
+    let g='',t='',im='';const isImp=v=>/^(must|[1-5])$/i.test(v);
+    if(c.length>=3){[g,t,im]=c}else if(c.length===2){if(isImp(c[1]))[t,im]=c;else[g,t]=c}else t=c[0];
+    if(/^customer need$/i.test(t))return;S.needs.push({id:uid(),group:g,text:t,imp:isImp(im)?(/must/i.test(im)?'Must':im):'',flows:[],fns:[]});n++});return n}
+function renderNeedsPanel(R){const N=S.needs,rel=N.filter(n=>n.flows.length).length,unused=S.io.filter(t=>!N.some(n=>n.flows.includes(t.id)));
+  R.append(h('h2',{},'Needs and flows'),h('p',{class:'summary'},N.length?`${rel} of ${N.length} needs relate to at least one flow.`:'No customer needs yet.'));
+  if(N.length&&unused.length)R.append(h('h3',{},`Flows no need relates to (${unused.length})`),h('p',{class:'note'},'Ask whether each assumed flow is necessary. Keep it if it matters for the design (for example hand or weight), or remove it from the black box.'),
+    h('div',{class:'list'},unused.map(t=>h('button',{class:'li',onclick:()=>{go('bb');sel=new Set([t.id]);renderAll()}},h('span',{class:'chip c-'+ccls(t.flow)}),h('span',{class:'t'},t.label,h('small',{},t.dir==='in'?'input':'output'))))));
+  renderIssues(R,['need'],'Needs check');
+  R.append(h('div',{class:'btns'},h('button',{class:'btn primary',onclick:()=>go('chain')},'Continue to function chains')))}
+/* ----- Step 3: chains ----- */
+function renderChainPanel(R){const c=S.chains.find(x=>x.id===S.chainOn);R.append(h('h2',{},'Function chains'));
+  if(c){const i=S.chains.indexOf(c),t=S.io.find(x=>x.id===c.io),L=S.blocks.filter(b=>b.chain===c.id);
+    R.append(h('label',{class:'fld'},h('span',{},`Chain ${i+1} name`),h('input',{value:c.name,oninput:e=>{c.name=e.target.value;renderChrome()},onchange:()=>commit()})),
+      h('p',{class:'note'},t?`Following "${t.label}" through the product. Add every operation performed on or with it, and any other flows the chain needs.`:'Add the operations this chain performs.'),
+      h('h3',{},`Sub-functions (${L.length})`),L.length?h('div',{class:'list'},L.sort((a,b)=>a.x-b.x).map(b=>h('button',{class:'li',onclick:()=>{sel=new Set([b.id]);renderAll();centerOn(b.id)}},h('span',{class:'t'},b.text,h('small',{},term(b.fn)||'no basis term'))))):h('p',{class:'note'},'Add functions from the left; they join this chain.'),
+      h('div',{class:'btns'},h('button',{class:'btn danger',onclick:()=>deleteChain(c.id)},'Delete chain')))}
+  const L=S.io.filter(t=>t.dir==='in');R.append(h('h3',{},'Input flows to follow'));
+  if(!L.length)R.append(h('p',{class:'note'},'No input flows yet. Add them in step 1.'));
+  else R.append(h('div',{class:'list'},L.map(t=>{const ch=S.chains.find(x=>x.io===t.id);return h('button',{class:'li'+(ch&&ch.id===S.chainOn?' sel':''),onclick:()=>{if(ch){S.chainOn=ch.id;sel.clear();commit();fit()}else newChain(t.id)}},
+    h('span',{class:'chip c-'+ccls(t.flow)}),h('span',{class:'t'},t.label,h('small',{},ch?`Followed in ${chainLabel(ch.id).toLowerCase()}`:'Not followed yet. Click to start a chain.')))})));
+  R.append(h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>{const c={id:uid(),name:'Chain '+(S.chains.length+1),io:null};S.chains.push(c);S.chainOn=c.id;commit()}},'Blank chain'),h('button',{class:'btn primary',onclick:()=>go('agg')},'Continue to aggregate')),
+    h('p',{class:'note'},'Blocks in other chains are faded. Toggle "Other chains" above the canvas to hide them.'))}
+/* ----- Step 4: aggregate ----- */
+function renderAggPanel(R){R.append(h('h2',{},'Aggregate function chains'),h('p',{class:'note'},'Connect chains with flows where they interact: drag from a block in one chain to a block in another. Then add or remove sub-functions as needed.'));
+  const D=dupes();R.append(h('h3',{},`Possible repeated sub-functions (${D.length})`));
+  if(!D.length)R.append(h('p',{class:'note'},'None found. The tool compares function terms, names and input flows across chains.'));
+  D.forEach(([a,b])=>R.append(h('div',{class:'card'},h('p',{style:'margin:0 0 6px;font-size:14px'},`"${a.text}" (${chainLabel(a.chain)}) and "${b.text}" (${chainLabel(b.chain)})`),
+    h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>{sel=new Set([a.id,b.id]);renderCanvas();renderChrome();centerOn(a.id)}},'Show both'),h('button',{class:'btn primary',onclick:()=>mergeBlocks(a.id,b.id)},'Merge into one')))));
+  if(S.chains.length)R.append(h('h3',{},'Chains'),h('div',{class:'list'},S.chains.map((c,i)=>h('button',{class:'li',onclick:()=>{S.chainOn=c.id;go('chain')}},h('span',{class:'t'},`Chain ${i+1}: ${c.name}`,h('small',{},`${S.blocks.filter(b=>b.chain===c.id).length} sub-functions. Click to edit in step 3.`))))));
+  const un=S.blocks.filter(b=>!b.chain).length;if(un&&S.chains.length)R.append(h('p',{class:'note'},`${un} sub-function${un>1?'s are':' is'} not in any chain. That's fine for functions added while aggregating.`))}
+/* ----- Step 5: verify ----- */
+function renderVerify(R){const N=S.needs;R.append(h('h2',{},'Verify customer needs'));
+  if(!N.length){R.append(h('p',{class:'note'},'No customer needs to verify. Add them in step 2.'),h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>go('cn')},'Go to customer needs')));return}
+  const st=N.map(n=>({n,f:needFns(n)})),met=st.filter(x=>x.f.all.length).length;
+  R.append(h('p',{class:'summary'},`${met} of ${N.length} customer needs are met by at least one sub-function. Click a need to highlight its sub-functions.`));
+  const box_=h('div',{style:'margin-bottom:16px'});
+  st.sort((a,b)=>(a.f.all.length>0)-(b.f.all.length>0)).forEach(({n,f})=>{const ok=f.all.length>0,row=h('div',{class:'need'+(ok?'':' unmet')});
+    row.append(h('button',{class:'needhead',onclick:()=>{sel=new Set(f.all);renderCanvas();renderChrome();if(f.all[0])centerOn(f.all[0])}},h('span',{class:'dot '+(ok?'d-ok':'d-error')}),h('span',{class:'t'},n.text||'Untitled need'),h('span',{class:'imp'},n.imp?'Importance '+n.imp:'')));
+    const fl=n.flows.map(id=>S.io.find(t=>t.id===id)?.label).filter(Boolean);
+    row.append(h('div',{class:'needsub'},fl.length?'Flows: '+fl.join(', '):'No related flows yet (step 2).'));
+    const chips=h('div',{class:'chips'});f.auto.forEach(id=>chips.append(h('span',{class:'fchip',title:'Acts on a related flow'},nm(id))));
+    f.manual.forEach(id=>chips.append(h('span',{class:'fchip man',title:'Linked by you'},nm(id),h('button',{'aria-label':'Unlink '+nm(id),onclick:()=>{n.fns=n.fns.filter(x=>x!==id);commit()}},'×'))));
+    const s=h('select',{class:'addsel','aria-label':'Link a sub-function',onchange:e=>{if(e.target.value){(n.fns??=[]).push(e.target.value);commit()}}});s.append(h('option',{value:''},'Link a sub-function…'));
+    S.blocks.filter(b=>!f.all.includes(b.id)).forEach(b=>s.append(h('option',{value:b.id},b.text)));chips.append(s);row.append(chips);box_.append(row)});
+  R.append(box_)}
+
+/* ----- clear the current step ----- */
+const CLEAR={bb:['Clear black box','Removes the product idea, the basic function and every input and output flow.'],cn:['Clear all needs','Removes every customer need in the table.'],
+  chain:['Clear all chains','Removes every function chain and its sub-functions.'],fs:['Clear canvas','Removes every function, arrow and module. The black box stays.'],
+  agg:['Clear canvas','Removes every function, arrow, module and chain. The black box and customer needs stay.'],verify:['Clear manual links','Removes the sub-functions you linked to needs by hand.']};
+function hasClear(){const v=S.view;return v==='bb'?!!(S.io.length||S.overall||S.idea):v==='cn'?S.needs.length>0:v==='chain'?S.chains.length>0:(v==='fs'||v==='agg')?S.blocks.length+S.edges.length+S.modules.length>0:v==='verify'?S.needs.some(n=>(n.fns||[]).length):false}
+function clearStep(){const v=S.view;
+  if(v==='bb'){S.overall='';S.idea='';S.io=[];S.tpos={}}
+  else if(v==='cn')S.needs=[];
+  else if(v==='chain'){const ids=new Set(S.chains.map(c=>c.id)),drop=new Set(S.blocks.filter(b=>ids.has(b.chain)).map(b=>b.id));
+    S.blocks=S.blocks.filter(b=>!drop.has(b.id));S.edges=S.edges.filter(e=>!drop.has(e.from)&&!drop.has(e.to));S.chains=[];S.chainOn=null}
+  else if(v==='fs'||v==='agg'){S.blocks=[];S.edges=[];S.modules=[];S.chains=[];S.chainOn=null}
+  else if(v==='verify')S.needs.forEach(n=>n.fns=[]);
+  sel.clear();commit();fit();toast('Cleared this step. Undo (Ctrl+Z) brings it back.')}
+function clearBtn(){const c=CLEAR[S.view];if(!c)return null;const b=h('button',{class:'btn danger',title:c[1],disabled:!hasClear()||null},c[0]);let armed=false,t;
+  b.onclick=()=>{if(!armed){armed=true;b.textContent='Click again to clear';t=setTimeout(()=>{armed=false;b.textContent=c[0]},3500);return}clearTimeout(t);clearStep()};return b}
+
+/* ===================== Chrome ===================== */
+function renderChrome(){const NV=$('#steps');NV.innerHTML='';const L=MODES[S.mode];
+  L.forEach(([v,t],i)=>{const b=h('button',{'aria-current':v===S.view?'step':'false',onclick:()=>go(v)},h('b',{},String(i+1)),t);
+    const grp=v==='cn'?['need']:i===L.length-1?(S.mode==='guided'?['flow','meet']:['flow']):null;
+    if(grp){const n=issues.filter(x=>x.sev!=='info'&&grp.includes(x.group)).length;if(n||(v==='cn'?S.needs.length:S.blocks.length))b.append(h('span',{class:'badge'+(n?'':' ok')},n?String(n):'✓'))}NV.append(b)});
+  document.querySelectorAll('#mode button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===S.mode)));
+  $('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;
+  const bar=$('#stagebar');bar.innerHTML='';bar.style.display=S.view==='cn'?'none':'';
+  bar.append(h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2)},'aria-label':'Zoom in'},'+'),h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1/1.2,r.width/2,r.height/2)},'aria-label':'Zoom out'},'−'),h('button',{class:'btn',onclick:fit},'Fit'));
+  if(S.view==='chain'){const cs=h('select',{class:'btn','aria-label':'Chain to work on',onchange:e=>{S.chainOn=e.target.value||null;sel.clear();commit();fit()}});cs.append(h('option',{value:''},'New chain…'));
+    S.chains.forEach((c,i)=>{const o=h('option',{value:c.id},`Chain ${i+1}: ${c.name}`);if(c.id===S.chainOn)o.selected=true;cs.append(o)});
+    bar.append(cs,h('label',{class:'btn',style:'display:flex;gap:6px;align-items:center;cursor:pointer'},h('input',{type:'checkbox',checked:showOther||null,onchange:e=>{showOther=e.target.checked;renderCanvas()}}),'Other chains'))}
+  if(isCv())bar.append(h('span',{class:'sp'}),h('button',{class:'btn',onclick:groupSel,title:'Ctrl+G'},'Group as module'),h('button',{class:'btn',onclick:()=>deleteSel(),disabled:!sel.size},'Delete'));
+  if(isBB())bar.append(h('span',{class:'sp'}));const cb=clearBtn();if(cb)bar.append(cb);
+  $('#hint').textContent=isBB()?'Double-click the box or a flow name to rename it.':'Drag from a block’s right dot to another block. Same-class flows share one arrow.'}
+function renderAll(refit){renderPalette();renderCanvas();renderInspector();renderChrome();if(refit)fit()}
+function go(v){if(v===S.view)return;S.view=v;sel.clear();palSig='';if(v==='chain'&&!S.chains.some(c=>c.id===S.chainOn))S.chainOn=S.chains[0]?.id||null;commit();fit()}
+function setMode(m){if(m===S.mode)return;const map={quick:{cn:'fs',chain:'fs',agg:'fs',verify:'check'},guided:{fs:'agg',check:'verify'}};
+  S.mode=m;S.view=map[m][S.view]||S.view;sel.clear();palSig='';commit();fit();
+  toast(m==='guided'?'5-step mode: black box, customer needs, function chains, aggregate, verify. Your model carries over.':'Quick mode. Your model carries over; customer needs and chains are kept for later.')}
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
+$('#q').addEventListener('input',e=>{palQ=e.target.value;renderPalette()});
+$('#undo').onclick=undo;$('#redo').onclick=redo;
+$('#new').onclick=()=>{S=blank(S.mode);sel.clear();palSig='';commit();fit();toast('Started a new model. Undo restores the previous one.')};
+$('#ex').onchange=e=>{const v=e.target.value;e.target.value='';if(!v)return;S=migrate(v==='nail'?nailGun():v==='vacuum'?vacuum():example());sel.clear();palSig='';commit();fit();
+  toast(v==='vacuum'?'Loaded the handheld vacuum example in 5-step mode, at step 4.':v==='nail'?'Loaded the nail gun example. Step 3 shows what the basis rules flag in it.':'Loaded the coffee maker example (illustrative, not from a published model).')};
+const dlg=$('#dlg'),txt=$('#dlgtxt');
+const dmsg=(m,ok)=>{const e=$('#dlgmsg');e.textContent=m||'';e.className='dlgmsg'+(ok?' ok':'')};
+$('#data').onclick=()=>{txt.value=JSON.stringify(S,null,1);dmsg('');dlg.showModal()};
+const FILEHEAD='Functional Model Builder model. Open it with Save / load > Open .txt file.\n';
+function loadModelText(raw,src){const where=src==='file'?'this file':'the pasted text',t=(raw||'').trim();
+  if(!t){dmsg(src==='file'?'The file is empty. Nothing was loaded; your current model is unchanged.':'There is nothing to load. Paste a saved model into the box first.');return}
+  let m=null;try{const i=t.indexOf('{'),j=t.lastIndexOf('}');if(i>=0&&j>i)m=migrate(JSON.parse(t.slice(i,j+1)))}catch(e){m=null}
+  if(!m){dmsg(`No model was found in ${where}. Use a .txt file saved from this tool. Your current model is unchanged.`);return}
+  if(!m.io.length&&!m.blocks.length&&!(m.needs||[]).length&&!m.overall&&!m.idea){dmsg(`${src==='file'?'The file':'The text'} holds a model, but it is empty (no flows, functions or customer needs). Nothing was loaded.`);return}
+  S=m;sel.clear();palSig='';commit();dlg.close();fit();toast(`Loaded "${m.overall||'Untitled'}": ${m.io.length} flows, ${m.blocks.length} functions${m.needs.length?', '+m.needs.length+' needs':''}.`)}
+$('#dDown').onclick=async()=>{if(!dl){dmsg('Downloading isn’t available in this view. Use Copy model text and paste it into a text file instead.');return}
+  const filename=slug(S.overall)+'-model.txt';
+  try{await dl.save({filename,data:new Blob([FILEHEAD+JSON.stringify(S,null,1)],{type:'text/plain'})});dmsg(`Saved ${filename}.`,true)}
+  catch(e){const c=e&&e.code;dmsg(c==='declined'?'Download cancelled.':c==='rate_limited'?'A save prompt is already open. Finish it, then try again.':'The file could not be saved here. Use Copy model text instead.')}};
+$('#dOpen').onclick=()=>$('#dFile').click();
+$('#dFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>16*1024*1024){dmsg('That file is too large to be a model from this tool. Nothing was loaded.');return}
+  let t='';try{t=await f.text()}catch(_){dmsg('The file could not be read. Nothing was loaded.');return}loadModelText(t,'file')};
+$('#dClose').onclick=()=>dlg.close();
+async function copyTxt(){txt.focus();txt.select();try{await navigator.clipboard.writeText(txt.value);toast('Copied to clipboard')}catch(e){try{document.execCommand('copy');toast('Copied to clipboard')}catch(_){toast('Text selected. Press Ctrl+C to copy.')}}}
+$('#dCopy').onclick=()=>{txt.value=JSON.stringify(S,null,1);copyTxt()};
+$('#dLoad').onclick=()=>loadModelText(txt.value,'paste');
+function exportSVG(){let b;try{b=vp.getBBox()}catch(e){}if(!b)return'';const pad=24;
+  const clone=vp.cloneNode(true);clone.removeAttribute('transform');const src=vp.querySelectorAll('*'),dst=clone.querySelectorAll('*');
+  const props=['fill','fill-opacity','stroke','stroke-width','stroke-dasharray','stroke-opacity','font-family','font-size','font-weight','paint-order','stroke-linejoin'];
+  src.forEach((el,i)=>{const cs=getComputedStyle(el);dst[i].setAttribute('style',props.map(p=>`${p}:${cs.getPropertyValue(p)}`).join(';'));if(el.classList.contains('hit'))dst[i].setAttribute('data-hit','1');dst[i].removeAttribute('class')});
+  clone.querySelectorAll('[data-hit]').forEach(x=>x.remove());
+  const defs=cv.querySelector('defs').cloneNode(true);const root=getComputedStyle(document.documentElement);
+  defs.querySelectorAll('path').forEach(p=>{const v=p.getAttribute('style').match(/var\((--[a-z]+)\)/);if(v)p.setAttribute('style','fill:'+root.getPropertyValue(v[1]).trim())});
+  return`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.x-pad} ${b.y-pad} ${b.width+2*pad} ${b.height+2*pad}" width="${b.width+2*pad}" height="${b.height+2*pad}"><rect x="${b.x-pad}" y="${b.y-pad}" width="${b.width+2*pad}" height="${b.height+2*pad}" fill="${root.getPropertyValue('--paper').trim()}"/>${defs.outerHTML}${clone.innerHTML}</svg>`}
+
+/* ===================== Load / migrate ===================== */
+function migrate(m){if(!m||!Array.isArray(m.io)||!Array.isArray(m.blocks)||!Array.isArray(m.edges))return null;
+  m.modules=m.modules||[];m.overall=m.overall||'';m.tpos=m.tpos||{};
+  if(!m.v||m.v<2){const ioById=Object.fromEntries(m.io.map(t=>[t.id,t]));
+    m.edges=m.edges.map(e=>{const fl=e.flows||[{id:uid(),k:e.flow?.k||'',cj:e.flow?.cj||null,label:e.label||'Flow'}];let from=e.from,to=e.to;
+      if(ioById[from]){fl.forEach(f=>f.io=from);from=TID('in',ccls(ioById[from].flow))}
+      if(ioById[to]){fl.forEach(f=>f.io=to);to=TID('out',ccls(ioById[to].flow))}return{id:e.id,from,to,flows:fl}});
+    m.io.forEach(t=>{const id=TID(t.dir,ccls(t.flow));if(t.x!=null&&!m.tpos[id])m.tpos[id]={x:t.x,y:t.y};delete t.x;delete t.y});m.v=2}
+  m.mode=m.mode||'quick';if(!m.view)m.view=({1:'bb',2:'fs',3:'check'})[m.step]||'bb';delete m.step;
+  if(!MODES[m.mode].some(v=>v[0]===m.view))m.view='bb';m.needs=m.needs||[];m.chains=m.chains||[];m.idea=m.idea||'';m.chainOn=m.chainOn||null;m.v=3;
+  return m}
+function example(){
+  const F=k=>({k,cj:null});
+  const io=[
+    {id:'tG',dir:'in',flow:F('Material>Solid>Particulate'),label:'Coffee grounds'},
+    {id:'tW',dir:'in',flow:F('Material>Liquid'),label:'Water'},
+    {id:'tE',dir:'in',flow:F('Energy>Electrical'),label:'Electricity'},
+    {id:'tS',dir:'in',flow:F('Signal>Control>Discrete'),label:'On/off signal'},
+    {id:'tC',dir:'out',flow:F('Material>Liquid'),label:'Coffee'},
+    {id:'tU',dir:'out',flow:F('Material>Solid>Particulate'),label:'Used grounds'},
+    {id:'tH',dir:'out',flow:F('Energy>Thermal'),label:'Heat loss'},
+    {id:'tL',dir:'out',flow:F('Signal>Status>Visual'),label:'Status light'}];
+  const B=(id,fn,text,x,y)=>({id,fn,text,auto:false,x,y});
+  const blocks=[
+    B('b1','Channel>Import','Import water and coffee grounds',220,-40),B('b2','Provision>Store','Store water',440,-110),
+    B('b3','Channel>Import','Import electricity',220,180),B('b4','Control Magnitude>Actuate','Actuate electricity',440,180),
+    B('b6','Convert>Convert','Convert electricity to heat',660,180),B('b7','Channel>Transfer>Transport','Transport heated water',880,-110),
+    B('b9','Connect>Mix','Mix water and grounds',1100,-40),B('b10','Branch>Separate>Extract','Extract coffee',1320,-40),
+    B('b11','Channel>Export','Export coffee and used grounds',1540,-40),B('b13','Signal>Indicate','Indicate on/off status',660,330)];
+  const L=(io,label)=>({id:uid(),k:'',cj:null,label,io});
+  const N=(k,label)=>({id:uid(),k,cj:null,label});
+  const E=(id,from,to,flows)=>({id,from,to,flows});
+  const edges=[
+    E('e1','T:in:Material','b1',[L('tW','Water'),L('tG','Coffee grounds')]),
+    E('e2','b1','b2',[N('Material>Liquid','Water')]),E('e3','b2','b7',[N('Material>Liquid','Water')]),
+    E('e4','b1','b9',[N('Material>Solid>Particulate','Coffee grounds')]),
+    E('e5','T:in:Energy','b3',[L('tE','Electricity')]),E('e6','b3','b4',[N('Energy>Electrical','Electricity')]),
+    E('e7','T:in:Signal','b4',[L('tS','On/off signal')]),E('e8','b4','b6',[N('Energy>Electrical','Electricity')]),
+    E('e9','b6','b7',[N('Energy>Thermal','Heat')]),E('e10','b6','T:out:Energy',[L('tH','Heat loss')]),
+    E('e11','b7','b9',[N('Material>Liquid','Hot water')]),E('e12','b9','b10',[N('Material>Mixture>Solid-liquid','Coffee slurry')]),
+    E('e13','b10','b11',[N('Material>Liquid','Coffee'),N('Material>Solid>Particulate','Used grounds')]),
+    E('e14','b11','T:out:Material',[L('tC','Coffee'),L('tU','Used grounds')]),
+    E('e15','T:in:Signal','b13',[L('tS','On/off signal')]),E('e16','b13','T:out:Signal',[L('tL','Status light')])];
+  return{v:2,step:2,overall:'Brew coffee',io,blocks,edges,
+    tpos:{'T:in:Material':{x:-20,y:-40},'T:in:Energy':{x:-20,y:180},'T:in:Signal':{x:-20,y:330},'T:out:Material':{x:1780,y:-40},'T:out:Energy':{x:1780,y:180},'T:out:Signal':{x:1780,y:330}},
+    modules:[{id:'m1',name:'Heating module',members:['b3','b4','b6']},{id:'m2',name:'Brewing module',members:['b9','b10']}]}}
+
+/* ===================== Export ===================== */
+let dl=null,jspdfP=null,xCur=null;
+(async()=>{try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){dl=null}})();
+function loadJsPDF(){return jspdfP??=new Promise((res,rej)=>{if(window.jspdf)return res(window.jspdf);const sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';sc.onload=()=>res(window.jspdf);sc.onerror=()=>{jspdfP=null;rej(new Error('load'))};document.head.append(sc)})}
+function buildDiagram({what,legend,mods,light,ref,needs}){
+  const root=document.documentElement,prev=root.getAttribute('data-theme');if(light)root.setAttribute('data-theme','light');
+  const keep=sel;sel=new Set();syncLabels();if(what!=='bb')layoutIO();
+  const NS='http://www.w3.org/2000/svg',off=document.createElementNS(NS,'svg');off.setAttribute('style','position:absolute;left:-20000px;top:0;width:10px;height:10px');
+  off.innerHTML=cv.querySelector('defs').outerHTML;document.body.append(off);
+  const mk=(html)=>{const g=document.createElementNS(NS,'g');g.innerHTML=html;off.append(g);return g};
+  try{
+    const parts=[];
+    if(what!=='fs')parts.push({cap:'Black box model',g:mk(renderBlackBox())});
+    if(what!=='bb')parts.push({cap:'Function structure',g:mk(S.blocks.length?structureMarkup(true):`<text class="xsub" x="0" y="0">No functions yet. Build the function structure in step 2.</text>`)});
+    parts.forEach(p=>{p.g.querySelectorAll('[data-port],.hit,.halo').forEach(x=>x.remove());p.bb=p.g.getBBox()});
+    const pad=48,gap=56;const W=Math.max(640,...parts.map(p=>p.bb.width))+2*pad;let y=pad;
+    const head=mk(`<text class="xtitle" x="${pad}" y="${y+22}">${esc(S.overall||'Untitled product')}</text><text class="xsub" x="${pad}" y="${y+46}">Functional model using the reconciled functional basis (${REF.short})</text>`);
+    y+=74;
+    parts.forEach(p=>{mk(`<line class="xrule" x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}"/><text class="xcap" x="${pad}" y="${y+28}">${p.cap}</text>`);y+=50;
+      const tx=pad+(W-2*pad-p.bb.width)/2-p.bb.x,ty=y-p.bb.y;p.g.setAttribute('transform',`translate(${tx},${ty})`);y+=p.bb.height+gap});
+    const foot=[];
+    if(legend){let x=pad;const L=['Material','Energy','Signal'].map(c=>{const r=`<line class="fl f-${c}" x1="${x}" y1="${y+6}" x2="${x+38}" y2="${y+6}" marker-end="url(#ar-${c})"/><text class="ttxt" x="${x+48}" y="${y+11}">${c} flow</text>`;x+=170;return r}).join('');
+      mk(`<line class="xrule" x1="${pad}" x2="${W-pad}" y1="${y-24}" y2="${y-24}"/>`+L+(what!=='bb'&&S.modules.length?`<rect class="mod" x="${x}" y="${y-4}" width="38" height="20" rx="4"/><text class="ttxt" x="${x+48}" y="${y+11}">Module</text>`:''));y+=34}
+    if(mods&&what!=='bb'&&S.modules.length){let t=`<text class="xcap" x="${pad}" y="${y+14}">Modules</text>`;y+=26;
+      S.modules.forEach(m=>{t+=`<text class="ttxt" x="${pad}" y="${y+14}"><tspan style="font-weight:600">${esc(m.name)}:</tspan> ${esc(m.members.map(nm).join(', '))}</text>`;y+=20});mk(t);y+=10}
+    if(needs&&S.mode==='guided'&&S.needs.length){const cx=[pad,pad+150,pad+430,pad+520];let t=`<line class="xrule" x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}"/><text class="xcap" x="${pad}" y="${y+28}">Customer needs</text>`;y+=56;
+      t+=['Group','Customer need','Importance','Related flows'].map((c,i)=>`<text class="ttxt" style="font-weight:600" x="${cx[i]}" y="${y}">${c}</text>`).join('');y+=8;t+=`<line class="xrule" x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}"/>`;y+=18;
+      S.needs.forEach(n=>{const fl=n.flows.map(id=>S.io.find(x=>x.id===id)?.label).filter(Boolean).join(', ');
+        t+=`<text class="ttxt" x="${cx[0]}" y="${y}">${esc(trunc(n.group||'',22))}</text><text class="ttxt" x="${cx[1]}" y="${y}">${esc(trunc(n.text||'',40))}</text><text class="ttxt" x="${cx[2]}" y="${y}">${esc(n.imp||'')}</text><text class="ttxt" x="${cx[3]}" y="${y}">${esc(trunc(fl||'none',Math.max(20,Math.floor((W-pad-cx[3])/6.6))))}</text>`;y+=19});mk(t);y+=24}
+    if(ref){const L=wrap('Reference: '+REF.full+' '+REF.url,Math.floor((W-2*pad)/6.2),5);let t=`<line class="xrule" x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}"/>`;y+=20;
+      L.forEach(l=>{t+=`<text class="xsub" x="${pad}" y="${y}">${esc(l)}</text>`;y+=17});mk(t);y+=6}
+    const H=y+pad-gap/2;
+    const bg=document.createElementNS(NS,'rect');bg.setAttribute('class','xbg');bg.setAttribute('width',W);bg.setAttribute('height',H);off.insertBefore(bg,off.children[1]);
+    const props=['fill','fill-opacity','stroke','stroke-width','stroke-dasharray','stroke-opacity','stroke-linejoin','paint-order','font-family','font-size','font-weight'];
+    off.querySelectorAll('*').forEach(el=>{if(el.closest('defs'))return;if(el.tagName==='g'&&!el.getAttribute('class')){el.removeAttribute('data-node');return}
+      const cs=getComputedStyle(el);const st=props.map(p=>`${p}:${cs.getPropertyValue(p)}`).join(';');el.setAttribute('style',st+(el.getAttribute('style')&&el.tagName==='tspan'?';'+el.getAttribute('style'):''));el.removeAttribute('class')});
+    off.querySelectorAll('defs path').forEach(pth=>{const v=(pth.getAttribute('style')||'').match(/var\((--[a-z]+)\)/);if(v)pth.setAttribute('style','fill:'+getComputedStyle(root).getPropertyValue(v[1]).trim())});
+    off.querySelectorAll('[data-node],[data-edge],[data-module],[data-io],[data-overall],[data-fi],[data-lab]').forEach(el=>[...el.attributes].forEach(a=>{if(a.name.startsWith('data-'))el.removeAttribute(a.name)}));
+    off.removeAttribute('style');off.setAttribute('viewBox',`0 0 ${W} ${H}`);off.setAttribute('width',W);off.setAttribute('height',H);
+    return{svg:new XMLSerializer().serializeToString(off),W,H}
+  }finally{off.remove();sel=keep;if(light){prev==null?root.removeAttribute('data-theme'):root.setAttribute('data-theme',prev)}}}
+function svgToCanvas(svg,W,H,scale){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=Math.round(W*scale);c.height=Math.round(H*scale);const x=c.getContext('2d');x.scale(scale,scale);x.drawImage(img,0,0,W,H);res(c)};img.onerror=()=>rej(new Error('render'));img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)})}
+const xopts=()=>({what:document.querySelector('[name=xwhat]:checked').value,fmt:document.querySelector('[name=xfmt]:checked').value,legend:$('#xLeg').checked,mods:$('#xMod').checked,ref:$('#xRef').checked,needs:$('#xNeeds').checked,light:$('#xLight').checked});
+function xPreview(){const o=xopts();xCur=buildDiagram(o);const P=$('#xprev');P.innerHTML='';P.append(h('img',{alt:'Diagram preview',src:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xCur.svg)}));
+  $('#xmsg').textContent=dl?`Size: ${Math.round(xCur.W)} × ${Math.round(xCur.H)} px at 1×. PNG exports at 2× for sharp printing.`:'Saving files isn’t available in this view. Use Copy SVG, or open this page in claude.ai to download.';$('#xGo').disabled=!dl}
+const slug=s=>(s||'functional-model').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'functional-model';
+async function xDownload(){const o=xopts();xCur=buildDiagram(o);const name=`${slug(S.overall)}-${o.what==='all'?'functional-model':o.what==='bb'?'black-box':'function-structure'}`;
+  const btn=$('#xGo');btn.disabled=true;btn.textContent='Preparing…';
+  try{let data,filename;
+    if(o.fmt==='svg'){data=new Blob([xCur.svg],{type:'image/svg+xml'});filename=name+'.svg'}
+    else if(o.fmt==='png'){const c=await svgToCanvas(xCur.svg,xCur.W,xCur.H,2);data=await new Promise(r=>c.toBlob(r,'image/png'));filename=name+'.png'}
+    else{const{jsPDF}=await loadJsPDF();const land=xCur.W>xCur.H;const pdf=new jsPDF({orientation:land?'landscape':'portrait',unit:'pt',format:'a4'});
+      const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),m=28,k=Math.min((pw-2*m)/xCur.W,(ph-2*m)/xCur.H);
+      const c=await svgToCanvas(xCur.svg,xCur.W,xCur.H,Math.max(2,3*k));pdf.addImage(c.toDataURL('image/png'),'PNG',(pw-xCur.W*k)/2,(ph-xCur.H*k)/2,xCur.W*k,xCur.H*k);
+      data=pdf.output('blob');filename=name+'.pdf'}
+    await dl.save({filename,data});toast(`Saved ${filename}`)}
+  catch(e){const c=e&&e.code;toast(c==='declined'?'Download cancelled.':c==='rate_limited'?'A save prompt is already open. Finish it, then try again.':e&&e.message==='load'?'The PDF tool could not load. Try PNG or SVG.':'The file could not be saved here. Try Copy SVG instead.')}
+  finally{btn.disabled=!dl;btn.textContent='Download'}}
+$('#exportBtn').onclick=()=>{$('#exp').showModal();xPreview()};
+$('#exp').addEventListener('change',xPreview);
+$('#xGo').onclick=xDownload;
+$('#xClose').onclick=()=>$('#exp').close();
+$('#xCopy').onclick=async()=>{const o=xopts();xCur=buildDiagram(o);try{await navigator.clipboard.writeText(xCur.svg);toast('SVG copied. Paste it into a .svg file, Word, or a vector editor.')}catch(e){$('#exp').close();txt.value=xCur.svg;dlg.showModal();txt.select();toast('Press Ctrl+C to copy the selected SVG.')}};
+
+function vacuum(){
+  const F=(k,cj)=>({k,cj:cj||null});
+  const io=[
+    {id:'vEl',dir:'in',flow:F('Energy>Electrical'),label:'Electrical energy'},
+    {id:'vHE',dir:'in',flow:F('Energy>Human'),label:'Human energy'},
+    {id:'vW',dir:'in',flow:F('Energy>Mechanical>Translational'),label:'Weight'},
+    {id:'vD',dir:'in',flow:F('Material>Solid>Particulate'),label:'Debris'},
+    {id:'vA',dir:'in',flow:F('Material>Gas'),label:'Air'},
+    {id:'vH',dir:'in',flow:F('Material>Human'),label:'Hand'},
+    {id:'vOn',dir:'in',flow:F('Signal>Control>Discrete'),label:'On/off'},
+    {id:'vPn',dir:'out',flow:F('Energy>Pneumatic'),label:'Pneumatic energy'},
+    {id:'vWo',dir:'out',flow:F('Energy>Mechanical>Translational'),label:'Weight'},
+    {id:'vNo',dir:'out',flow:F('Energy>Acoustic'),label:'Noise'},
+    {id:'vHt',dir:'out',flow:F('Energy>Thermal'),label:'Heat'},
+    {id:'vHEo',dir:'out',flow:F('Energy>Human'),label:'Human energy'},
+    {id:'vDo',dir:'out',flow:F('Material>Solid>Particulate'),label:'Debris'},
+    {id:'vAo',dir:'out',flow:F('Material>Gas'),label:'Air'},
+    {id:'vHo',dir:'out',flow:F('Material>Human'),label:'Hand'},
+    {id:'vSt',dir:'out',flow:F('Signal>Status>Visual'),label:'Status signal'}];
+  const chains=[{id:'c1',name:'Electricity',io:'vEl'},{id:'c2',name:'Hand',io:'vH'},{id:'c3',name:'Air and debris',io:'vA'},{id:'c4',name:'Human energy',io:'vHE'},{id:'c5',name:'Weight',io:'vW'}];
+  const B=(id,fn,text,x,y,chain)=>({id,fn,text,auto:false,x,y,chain});
+  const blocks=[
+    B('a1','Channel>Import','Import electricity',200,0,'c1'),B('a2','Provision>Store','Store electricity',420,0,'c1'),B('a3','Signal>Indicate>Display','Display charge status',640,0,'c1'),B('a4','Provision>Supply','Supply electricity',860,0,'c1'),
+    B('b1','Channel>Import','Import hand',200,170,'c2'),B('b2','Control Magnitude>Actuate','Actuate electricity',420,170,'c2'),B('b3','Convert>Convert','Convert electricity to rotation',640,170,'c2'),B('b4','Convert>Convert','Convert rotation to pneumatic',860,170,'c2'),
+    B('c1b','Channel>Import','Import air and debris',200,350,'c3'),B('c2b','Channel','Channel air and debris',420,350,'c3'),B('c3b','Branch>Separate','Separate air and debris',640,350,'c3'),B('c4b','Channel>Export','Export air',860,350,'c3'),
+    B('c5b','Provision>Store','Store debris',640,480,'c3'),B('c6b','Channel>Export','Export debris',860,480,'c3'),
+    B('d1','Channel>Import','Import human energy',200,640,'c4'),
+    B('e1','Support>Position','Position weight',200,800,'c5'),B('e2','Channel>Transfer>Transmit','Transmit weight',420,800,'c5')];
+  const L=(io,label)=>({id:uid(),k:'',cj:null,label,io});
+  const N=(k,label)=>({id:uid(),k,cj:null,label});
+  const el='Energy>Electrical',pn='Energy>Pneumatic',hand='Material>Human',air='Material>Gas',deb='Material>Solid>Particulate',he='Energy>Human',wt='Energy>Mechanical>Translational';
+  const E=(id,from,to,flows)=>({id,from,to,flows});
+  const edges=[
+    E('v1','T:in:Energy','a1',[L('vEl','Electricity')]),E('v2','a1','a2',[N(el,'Elect.')]),E('v3','a2','a3',[N(el,'Elect.')]),E('v4','a3','a4',[N(el,'Elect.')]),
+    E('v5','a3','T:out:Signal',[L('vSt','Status signal')]),E('v6','a4','b2',[N(el,'Elect.')]),
+    E('v7','T:in:Material','b1',[L('vH','Hand')]),E('v8','b1','b2',[N(hand,'Hand')]),E('v9','T:in:Signal','b2',[L('vOn','On/off')]),E('v10','d1','b2',[N(he,'Human energy')]),
+    E('v11','b2','b3',[N(el,'Elect.')]),E('v12','b2','T:out:Energy',[L('vHEo','Human energy')]),E('v13','b2','T:out:Material',[L('vHo','Hand')]),
+    E('v14','b3','b4',[N('Energy>Mechanical>Rotational','Rotation')]),E('v15','b3','T:out:Energy',[L('vHt','Heat'),L('vNo','Noise')]),
+    E('v16','b4','c1b',[N(pn,'Pneum.')]),E('v17','T:in:Material','c1b',[L('vA','Air'),L('vD','Debris')]),
+    E('v18','c1b','c2b',[N(pn,'Pneum.'),N(air,'Air'),N(deb,'Debris')]),E('v19','c2b','c3b',[N(pn,'Pneum.'),N(air,'Air'),N(deb,'Debris')]),
+    E('v20','c3b','c4b',[N(pn,'Pneum.'),N(air,'Air')]),E('v21','c3b','c5b',[N(deb,'Debris')]),
+    E('v22','c4b','T:out:Energy',[L('vPn','Pneumatic energy')]),E('v23','c4b','T:out:Material',[L('vAo','Air')]),
+    E('v24','b1','c5b',[N(hand,'Hand')]),E('v25','c5b','c6b',[N(deb,'Debris'),N(hand,'Hand')]),E('v26','c6b','T:out:Material',[L('vDo','Debris'),L('vHo','Hand')]),
+    E('v27','T:in:Energy','d1',[L('vHE','Human energy')]),
+    E('v28','T:in:Energy','e1',[L('vW','Weight')]),E('v29','e1','e2',[N(wt,'Weight')]),E('v30','b1','e2',[N(hand,'Hand')]),E('v31','d1','e2',[N(he,'Human energy')]),
+    E('v32','e2','T:out:Energy',[L('vHEo','Human energy'),L('vWo','Weight')]),E('v33','e2','T:out:Material',[L('vHo','Hand')])];
+  const need=(group,text,imp,flows=[])=>({id:uid(),group,text,imp,flows,fns:[]});
+  const needs=[
+    need('Accessories','Provide cord','2'),need('','Provide attachments','2'),
+    need('Storage','Easy storage','1'),need('','Stronger/easier mounting','2'),
+    need('Empty/Clean-up','Easy to empty','2'),need('','Durable filter/bag','3'),
+    need('Power','More power','4',['vEl']),need('','More suction','3',['vA','vPn']),
+    need('Weight','Lightweight','3',['vHE']),need('','Well balanced','4',['vHE']),
+    need('Battery','Long battery life','3',['vEl']),need('','Fast recharging','3',['vEl']),need('','Indicator light','3',['vSt']),
+    need('Size/Shape','Smaller size','1',['vH']),need('','Shape for corners','3'),need('','Comfortable handle','2'),need('','Different color','2'),
+    need('Durability','Sturdier casing','Must'),
+    need('Usage','Use frequently','1'),need('','Wet/dry capabilities','3'),need('','Easy to operate','1')];
+  return{v:3,mode:'guided',view:'agg',idea:'A handheld cordless device for picking up dust, dirt and other debris around the house',overall:'Pick up debris',io,blocks,edges,modules:[],needs,chains,chainOn:'c1',
+    tpos:{'T:in:Signal':{x:-80,y:90},'T:in:Material':{x:-80,y:260},'T:in:Energy':{x:-80,y:560},'T:out:Signal':{x:1120,y:-10},'T:out:Energy':{x:1120,y:130},'T:out:Material':{x:1120,y:420}}}}
+function nailGun(){
+  const io=[
+    {id:'nE',dir:'in',flow:{k:'Energy',cj:null},label:'Energy'},
+    {id:'nN',dir:'in',flow:{k:'Material>Solid>Object',cj:null},label:'Nails'},
+    {id:'nH',dir:'in',flow:{k:'Material>Human',cj:null},label:'Hand'},
+    {id:'nT',dir:'in',flow:{k:'Signal>Control>Discrete',cj:null},label:'Trigger signal'},
+    {id:'nS',dir:'in',flow:{k:'Signal>Control>Discrete',cj:null},label:'Safety signal'},
+    {id:'nD',dir:'out',flow:{k:'Material>Solid>Object',cj:null},label:'Driven nail'},
+    {id:'nHo',dir:'out',flow:{k:'Material>Human',cj:null},label:'Hand'}];
+  const B=(id,fn,text,x,y)=>({id,fn,text,auto:false,x,y});
+  const blocks=[
+    B('g1','Channel>Import','Import energy',200,-20),B('g2','Provision>Store','Store energy?',420,-20),B('g3','Control Magnitude>Actuate','Actuate energy',640,-20),
+    B('g4','Channel>Import','Import nails',200,80),B('g5','Provision>Store','Store nails',420,80),B('g6','Provision>Supply','Fetch nail',860,80),B('g7','Control Magnitude>Actuate','Actuate nail',1080,80),
+    B('g8','Channel>Import','Accept trigger signal',200,190),B('g9','Channel>Import','Accept safety signal',200,280),B('g10','Signal>Process','Decide to drive nail',520,235),
+    B('g11','Channel>Import','Import hand',200,390),B('g12','Channel>Export','Export hand',1080,390)];
+  const L=(io,label)=>({id:uid(),k:'',cj:null,label,io});
+  const N=(k,label)=>({id:uid(),k,cj:null,label});
+  const E=(id,from,to,flows)=>({id,from,to,flows});
+  const en='Energy',nl='Material>Solid>Object',sg='Signal>Control>Discrete';
+  const edges=[
+    E('n1','T:in:Energy','g1',[L('nE','Energy')]),E('n2','g1','g2',[N(en,'Energy')]),E('n3','g2','g3',[N(en,'Energy')]),
+    E('n4','g3','g6',[N(en,'Energy')]),E('n5','g3','g7',[N(en,'Energy')]),
+    E('n6','T:in:Material','g4',[L('nN','Nails')]),E('n7','g4','g5',[N(nl,'Nails')]),E('n8','g5','g6',[N(nl,'Nail')]),
+    E('n9','g6','g7',[N(nl,'Nail')]),E('n10','g7','T:out:Material',[L('nD','Driven nail')]),
+    E('n11','T:in:Signal','g8',[L('nT','Trigger signal')]),E('n12','T:in:Signal','g9',[L('nS','Safety signal')]),
+    E('n13','g8','g10',[N(sg,'Trigger signal')]),E('n14','g9','g10',[N(sg,'Safety signal')]),
+    E('n15','g10','g6',[N(sg,'Drive nail')]),E('n16','g10','g7',[N(sg,'Drive nail')]),
+    E('n17','T:in:Material','g11',[L('nH','Hand')]),E('n18','g11','g12',[N('Material>Human','Hand')]),E('n19','g12','T:out:Material',[L('nHo','Hand')])];
+  return{v:2,step:2,overall:'Drive nails',io,blocks,edges,modules:[],
+    tpos:{'T:in:Energy':{x:-40,y:-10},'T:in:Material':{x:-40,y:150},'T:in:Signal':{x:-40,y:240},'T:out:Material':{x:1320,y:220}}}}
+
+/* ===================== Boot ===================== */
+$('#refFull').append(REF.full+' ',h('a',{href:REF.url,target:'_blank',rel:'noopener noreferrer'},'View on nist.gov'),'. Function terms come from Table 5 and Appendix B; flow terms from Table 3 and Appendix A; energy effort/flow complements from Table 4.');
+try{const s=localStorage.getItem(KEY)||localStorage.getItem('fmb-model-v2')||localStorage.getItem('fmb-model-v1');if(s){const m=migrate(JSON.parse(s));if(m)S=m}}catch(e){}
+normalize();if(isCv())layoutIO();hist=[JSON.stringify(S)];hi=0;
+renderAll();fit();
+window.addEventListener('resize',()=>{clearTimeout(window._rt);window._rt=setTimeout(fit,150)});
+
+</script>
+</body>
+</html>
