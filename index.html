@@ -49,6 +49,8 @@ h1{font:600 19px/1.1 "Barlow Semi Condensed","Barlow",system-ui,sans-serif;margi
 #cnview{position:absolute;inset:0;overflow:auto;padding:18px 22px 40px;background:var(--paper)}
 #cnview h2{font:600 20px "Barlow Semi Condensed",system-ui,sans-serif;margin:0 0 4px}
 .cnwrap{overflow-x:auto}
+.scale-picker{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.scale-picker .mode button{padding:5px 9px}
 #cnview table{border-collapse:collapse;width:100%;min-width:760px;font-size:14px;background:var(--panel)}
 #cnview th{text-align:left;font-weight:600;border-bottom:2px solid var(--ink);padding:7px 6px}
 #cnview td{border-bottom:1px solid var(--rule);padding:4px 6px;vertical-align:top}
@@ -450,12 +452,12 @@ function refEl(kind,key){return h('span',{class:'src'},'Source: ',h('a',{href:RE
 /* ===================== State ===================== */
 const $=s=>document.querySelector(s);
 const stage=$('#stage'),cv=$('#cv'),vp=$('#vp');
-const BW=152,BH=64,TW=150,GRID=10,KEY='fmb-model-v3';
+const BW=152,BH=64,TW=150,GRID=10,KEY='fmb-model-v4';
 const ORDER=['Material','Energy','Signal','none'];
 const uid=()=>Math.random().toString(36).slice(2,9);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const snap=v=>Math.round(v/GRID)*GRID;
-const blank=(mode='quick')=>({v:3,mode,view:'bb',idea:'',overall:'',io:[],blocks:[],edges:[],modules:[],tpos:{},needs:[],chains:[],chainOn:null});
+const blank=(mode='quick')=>({v:4,mode,view:'bb',idea:'',overall:'',io:[],blocks:[],edges:[],modules:[],tpos:{},needs:[],importanceMax:5,chains:[],chainOn:null});
 const MODES={quick:[['bb','Black box'],['fs','Function structure'],['check','Check flows']],
   guided:[['bb','Black box model'],['cn','Customer needs'],['chain','Function chains'],['agg','Aggregate chains'],['verify','Verify needs']]};
 const isBB=()=>S.view==='bb';
@@ -928,17 +930,24 @@ function issueClick(i){const r=i.ref||'';
     go('cn');if(n)setTimeout(()=>{const el=document.querySelector(`[data-need="${n.id}"] input[data-f="text"]`);if(el){el.focus();el.scrollIntoView({block:'center'})}},40);return true}
   return false}
 /* ----- Step 2: customer needs table ----- */
-const IMP=['Must','5','4','3','2','1'];
+const importanceMax=()=>S.importanceMax===10?10:5;
+const importanceOptions=()=>['Must',...Array.from({length:importanceMax()},(_,i)=>String(importanceMax()-i))];
+function setImportanceMax(max){max=max===10?10:5;if(max===importanceMax())return;
+  const over=S.needs.filter(n=>/^\d+$/.test(String(n.imp))&&Number(n.imp)>5);
+  if(max===5&&over.length&&!confirm(`Switch to a 1–5 scale? ${over.length} importance value${over.length===1?'':'s'} above 5 will be changed to 5.`))return;
+  if(max===5)over.forEach(n=>n.imp='5');S.importanceMax=max;commit();toast(`Importance scale set to 1–${max}.`)}
 function renderNeeds(){const V=$('#cnview');const sx=V.scrollTop;V.innerHTML='';
   const pasteTa=h('textarea',{placeholder:'One need per line: Group, need and importance separated by tabs (paste straight from Excel or Word)'});
-  V.append(h('h2',{},'Customer needs'),h('p',{class:'note'},'Relate each customer need to one or more black-box flows. Importance runs from 1 (low) to 5 (high), or Must.'),
-    h('div',{class:'btns'},h('button',{class:'btn primary',onclick:()=>{S.needs.push({id:uid(),group:'',text:'',imp:'3',flows:[],fns:[]});commit();setTimeout(()=>{const r=[...document.querySelectorAll('#cnview tbody tr')].pop();r?.querySelector('input[data-f="text"]')?.focus()},40)}},'Add need'),h('span',{style:'flex:1'}),clearBtn()),
+  const scale=h('span',{class:'scale-picker'},'Importance scale',h('span',{class:'mode',role:'group','aria-label':'Importance scale'},
+    ...[5,10].map(max=>h('button',{type:'button','aria-pressed':String(importanceMax()===max),onclick:()=>setImportanceMax(max)},`1–${max}`))));
+  V.append(h('h2',{},'Customer needs'),h('p',{class:'note'},`Relate each customer need to one or more black-box flows. Importance runs from 1 (low) to ${importanceMax()} (high), or Must.`),
+    h('div',{class:'btns'},h('button',{class:'btn primary',onclick:()=>{S.needs.push({id:uid(),group:'',text:'',imp:'3',flows:[],fns:[]});commit();setTimeout(()=>{const r=[...document.querySelectorAll('#cnview tbody tr')].pop();r?.querySelector('input[data-f="text"]')?.focus()},40)}},'Add need'),scale,h('span',{style:'flex:1'}),clearBtn()),
     h('details',{},h('summary',{},'Paste rows from a spreadsheet'),pasteTa,h('button',{class:'btn',onclick:()=>{const n=pasteNeeds(pasteTa.value);if(n){commit();toast(`Added ${n} need${n>1?'s':''}`)}else toast('No rows found. Put each need on its own line.')}},'Add pasted rows')));
   if(!S.io.length)V.append(h('p',{class:'note',style:'color:var(--warn)'},'The black box has no flows yet, so there is nothing to relate needs to. Add flows in step 1.'));
   const tb=h('tbody');
   S.needs.forEach((n,i)=>{const tr=h('tr',{'data-need':n.id,class:n.flows.length?'':'nofl'});
     const inp=(f,ph)=>h('input',{value:n[f]||'','data-f':f,placeholder:ph,'aria-label':ph,oninput:e=>{n[f]=e.target.value},onchange:()=>commit({redraw:false})});
-    const imp=h('select',{'aria-label':'Importance',onchange:e=>{n.imp=e.target.value;commit({redraw:false})}});imp.append(h('option',{value:''},'–'));IMP.forEach(v=>{const o=h('option',{value:v},v);if(String(n.imp)===v)o.selected=true;imp.append(o)});
+    const imp=h('select',{'aria-label':'Importance',onchange:e=>{n.imp=e.target.value;commit({redraw:false})}});imp.append(h('option',{value:''},'–'));importanceOptions().forEach(v=>{const o=h('option',{value:v},v);if(String(n.imp)===v)o.selected=true;imp.append(o)});
     const chips=h('div',{class:'chips'});n.flows.forEach(id=>{const t=S.io.find(x=>x.id===id);if(!t)return;
       chips.append(h('span',{class:'fchip',title:`${t.dir==='in'?'Input':'Output'}: ${typeName(t.flow)}`},h('span',{class:'chip c-'+ccls(t.flow)}),t.label,h('button',{'aria-label':'Remove '+t.label,onclick:()=>{n.flows=n.flows.filter(x=>x!==id);commit()}},'×')))});
     const add=h('select',{class:'addsel','aria-label':'Relate a flow',onchange:e=>{if(e.target.value){n.flows.push(e.target.value);commit()}}});add.append(h('option',{value:''},n.flows.length?'Add flow…':'Relate a flow…'));
@@ -949,10 +958,12 @@ function renderNeeds(){const V=$('#cnview');const sx=V.scrollTop;V.innerHTML='';
   if(!S.needs.length)tb.append(h('tr',{},h('td',{colspan:'6',class:'note',style:'padding:14px'},'No customer needs yet. Add them one at a time or paste a table.')));
   V.append(h('div',{class:'cnwrap'},h('table',{},h('thead',{},h('tr',{},h('th',{},'#'),h('th',{},'Group'),h('th',{},'Customer need'),h('th',{},'Importance'),h('th',{},'Related flows'),h('th',{}))),tb)));
   V.scrollTop=sx}
-function pasteNeeds(txt){let n=0;txt.split(/\r?\n/).forEach(line=>{if(!line.trim())return;let c=line.split('\t');if(c.length===1)c=line.split(/\s{2,}|\s*[|;]\s*/);c=c.map(x=>x.trim());
-    let g='',t='',im='';const isImp=v=>/^(must|[1-5])$/i.test(v);
-    if(c.length>=3){[g,t,im]=c}else if(c.length===2){if(isImp(c[1]))[t,im]=c;else[g,t]=c}else t=c[0];
-    if(/^customer need$/i.test(t))return;S.needs.push({id:uid(),group:g,text:t,imp:isImp(im)?(/must/i.test(im)?'Must':im):'',flows:[],fns:[]});n++});return n}
+function pasteNeeds(txt){let n=0,needs=[],useTen=false;const isImp=v=>/^(must|10|[1-9])$/i.test(v);
+  txt.split(/\r?\n/).forEach(line=>{if(!line.trim())return;let c=line.split('\t');if(c.length===1)c=line.split(/\s{2,}|\s*[|;]\s*/);c=c.map(x=>x.trim());
+    let g='',t='',im='';if(c.length>=3){[g,t,im]=c}else if(c.length===2){if(isImp(c[1]))[t,im]=c;else[g,t]=c}else t=c[0];
+    if(/^customer need$/i.test(t)||/^importance$/i.test(t))return;const valid=isImp(im),value=valid?(/must/i.test(im)?'Must':String(Number(im))):'';
+    if(valid&&value!=='Must'&&Number(value)>5)useTen=true;needs.push({id:uid(),group:g,text:t,imp:value,flows:[],fns:[]})});
+  if(useTen)S.importanceMax=10;S.needs.push(...needs);n=needs.length;return n}
 function renderNeedsPanel(R){const N=S.needs,rel=N.filter(n=>n.flows.length).length,unused=S.io.filter(t=>!N.some(n=>n.flows.includes(t.id)));
   R.append(h('h2',{},'Needs and flows'),h('p',{class:'summary'},N.length?`${rel} of ${N.length} needs relate to at least one flow.`:'No customer needs yet.'));
   if(N.length&&unused.length)R.append(h('h3',{},`Flows no need relates to (${unused.length})`),h('p',{class:'note'},'Ask whether each assumed flow is necessary. Keep it if it matters for the design (for example hand or weight), or remove it from the black box.'),
@@ -1078,7 +1089,9 @@ function migrate(m){if(!m||!Array.isArray(m.io)||!Array.isArray(m.blocks)||!Arra
       if(ioById[to]){fl.forEach(f=>f.io=to);to=TID('out',ccls(ioById[to].flow))}return{id:e.id,from,to,flows:fl}});
     m.io.forEach(t=>{const id=TID(t.dir,ccls(t.flow));if(t.x!=null&&!m.tpos[id])m.tpos[id]={x:t.x,y:t.y};delete t.x;delete t.y});m.v=2}
   m.mode=m.mode||'quick';if(!m.view)m.view=({1:'bb',2:'fs',3:'check'})[m.step]||'bb';delete m.step;
-  if(!MODES[m.mode].some(v=>v[0]===m.view))m.view='bb';m.needs=m.needs||[];m.chains=m.chains||[];m.idea=m.idea||'';m.chainOn=m.chainOn||null;m.v=3;
+  if(!MODES[m.mode].some(v=>v[0]===m.view))m.view='bb';m.needs=m.needs||[];
+  const hasTenPointValue=m.needs.some(n=>/^\d+$/.test(String(n.imp))&&Number(n.imp)>5&&Number(n.imp)<=10);
+  m.importanceMax=m.importanceMax===10||hasTenPointValue?10:5;m.chains=m.chains||[];m.idea=m.idea||'';m.chainOn=m.chainOn||null;m.v=4;
   return m}
 function example(){
   const F=k=>({k,cj:null});
@@ -1272,7 +1285,7 @@ function nailGun(){
 
 /* ===================== Boot ===================== */
 $('#refFull').append(REF.full+' ',h('a',{href:REF.url,target:'_blank',rel:'noopener noreferrer'},'View on nist.gov'),'. Function terms come from Table 5 and Appendix B; flow terms from Table 3 and Appendix A; energy effort/flow complements from Table 4.');
-try{const s=localStorage.getItem(KEY)||localStorage.getItem('fmb-model-v2')||localStorage.getItem('fmb-model-v1');if(s){const m=migrate(JSON.parse(s));if(m)S=m}}catch(e){}
+try{const s=localStorage.getItem(KEY)||localStorage.getItem('fmb-model-v3')||localStorage.getItem('fmb-model-v2')||localStorage.getItem('fmb-model-v1');if(s){const m=migrate(JSON.parse(s));if(m)S=m}}catch(e){}
 normalize();if(isCv())layoutIO();hist=[JSON.stringify(S)];hi=0;
 renderAll();fit();
 window.addEventListener('resize',()=>{clearTimeout(window._rt);window._rt=setTimeout(fit,150)});
