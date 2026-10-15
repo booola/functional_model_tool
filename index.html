@@ -542,7 +542,12 @@ function layoutIO(){const bb=bounds(S.blocks.map(b=>b.id));
   ['in','out'].forEach(dir=>{let y=bb?bb.y:0;terminals().filter(t=>t.dir===dir).forEach(t=>{
     if(t.x==null){const x=dir==='in'?(bb?bb.x-TW-160:0):(bb?bb.x+bb.w+160:760);S.tpos[t.id]={x:snap(x),y:snap(y)};t.x=x;t.y=y}
     y=Math.max(y,S.tpos[t.id].y)+box(node(t.id)).h+60})})}
-function addBlock(k,x,y){const b={id:uid(),fn:k||'',text:term(k)||'New function',auto:!!k,x:snap(x),y:snap(y),chain:S.view==='chain'&&S.chainOn?S.chainOn:''};S.blocks.push(b);sel=new Set([b.id]);commit();return b}
+function createBlankChain(){const c={id:uid(),name:'Chain '+(S.chains.length+1),io:null};S.chains.push(c);S.chainOn=c.id;return c}
+function startBlankChain(){createBlankChain();sel.clear();commit();fit()}
+function addBlock(k,x,y){let chain='';if(S.view==='chain'){const c=S.chains.find(c=>c.id===S.chainOn)||createBlankChain();chain=c.id}
+  const b={id:uid(),fn:k||'',text:term(k)||'New function',auto:!!k,x:snap(x),y:snap(y),chain};S.blocks.push(b);sel=new Set([b.id]);commit();return b}
+function addBlockAtCenter(k=''){const r=stage.getBoundingClientRect(),n=S.blocks.length%6;return addBlock(k,(r.width/2-view.x)/view.k-BW/2+n*20,(r.height/2-view.y)/view.k-BH/2+n*20)}
+function addSubfunction(){const b=addBlockAtCenter();const inp=$('#right input[aria-label="Sub-function name"]');if(inp){inp.focus();inp.select()}return b}
 const routed=t=>S.edges.some(e=>e.flows.some(f=>f.io===t.id));
 const fromIO=t=>({id:uid(),k:t.flow.k,cj:t.flow.cj,label:t.label,io:t.id});
 function mergeLink(from,to,flows){const c=ccls(flows[0]);let e=S.edges.find(x=>x.from===from&&x.to===to&&eclass(x)===c);
@@ -732,9 +737,9 @@ function renderBlackBox(){
 function renderEmpty(){const E=$('#empty');E.innerHTML='';E.hidden=true;
   const card=(t,p,btns)=>{E.hidden=false;E.append(h('div',{},h('h3',{},t),h('p',{},p),h('div',{class:'btns'},btns)))};
   if(S.view==='chain'&&!S.chainOn){const L=S.io.filter(t=>t.dir==='in');
-    if(!L.length)return card('Start a function chain','Each chain follows one input flow, so add input flows to the black box first.',[h('button',{class:'btn primary',onclick:()=>go('bb')},'Go to black box')]);
-    return card('Start a function chain','Be the flow: pick an input flow and follow it through the product to an output. The tool adds its Import function; you add each operation after it.',
-      L.map(t=>h('button',{class:'btn'+(followed(t)?'':' primary'),onclick:()=>newChain(t.id)},t.label+(followed(t)?' (followed)':''))))}
+    if(!L.length)return card('Start a function chain','Use Add sub-function above the canvas to start a chain with a new box, or add input flows to the black box and follow one through the product.',[h('button',{class:'btn primary',onclick:startBlankChain},'New chain'),h('button',{class:'btn',onclick:()=>go('bb')},'Go to black box')]);
+    return card('Start a function chain','Be the flow: pick an input flow and follow it through the product to an output. The tool adds its Import function; you add each operation after it. You can also start a blank chain.',
+      [...L.map(t=>h('button',{class:'btn'+(followed(t)?'':' primary'),onclick:()=>newChain(t.id)},t.label+(followed(t)?' (followed)':''))),h('button',{class:'btn',onclick:startBlankChain},'New chain')])}
   if(S.view==='agg'&&!S.blocks.length)return card('Nothing to aggregate yet','Build function chains in step 3 first, then connect them here.',[h('button',{class:'btn primary',onclick:()=>go('chain')},'Go to function chains')]);
   if(S.view==='fs'&&!S.blocks.length)return card('Build the function structure',S.io.length?'Your black-box flows sit on the left and right, one arrow per flow class. A quick start: give each class an Import or Export function, then fill in the functions between them.':'Add input and output flows in step 1 first, or drag functions from the left onto the canvas.',
     [S.io.length?h('button',{class:'btn primary',onclick:scaffold},'Add Import and Export functions'):h('button',{class:'btn primary',onclick:()=>go('bb')},'Go to black box')])}
@@ -807,7 +812,7 @@ const STEPGUIDE={
   check:['Step 3: Check flows','Each issue links to the block or arrow it concerns. Errors are gaps in the model; warnings flag places where the functional basis suggests a different term or flow type.']},
  guided:{bb:['Step 1: Create black box model','Write the product idea and its basic function, then list every flow crossing the boundary. Mark flows that downstream design decisions will settle with "(?)". Hand (material) and weight (energy) flows are easy to miss but important.'],
   cn:['Step 2: Correlate customer needs','Relate each customer need to one or more flows. Every need should relate to at least one flow; this also checks whether the assumed input and output flows are necessary.'],
-  chain:['Step 3: Create function chains','Be the flow. Follow one input flow through to the output, listing every operation the product performs on or with it. Each operation is a sub-function. Diagram the sequence, including any other flows it needs.'],
+  chain:['Step 3: Create function chains','Be the flow. Follow one input flow through to the output, listing every operation the product performs on or with it. Use Add sub-function above the canvas or choose a function from the left. Use New chain to start another sequence.'],
   agg:['Step 4: Aggregate function chains','Connect the chains with flows where they interact. Add or remove sub-functions as needed, for example when two chains repeat the same sub-function.'],
   verify:['Step 5: Verify customer needs are met','Cross-reference the customer needs with the functional model. Every need must be met by one or more sub-functions; if not, add sub-functions or chains. Iteration is common.']}};
 function renderNeedFlows(){const P=$('#pal');P.innerHTML='';
@@ -829,7 +834,7 @@ function renderPalette(force){
     r.append(h('span',{class:'nm'},n.n),h('span',{class:'cr'},crumb?path.slice(0,-1).join(' › '):(n.c||'')));
     if(tab==='flows'){r.append(h('button',{class:'mini',title:'Add as black-box input',onclick:ev=>{ev.stopPropagation();addIO('in',key)}},'+ In'),h('button',{class:'mini',title:'Add as black-box output',onclick:ev=>{ev.stopPropagation();addIO('out',key)}},'+ Out'));
       r.onclick=()=>applyFlowFromPalette(key)}
-    else{r.draggable=true;r.ondragstart=ev=>ev.dataTransfer.setData('text/fn',key);r.onclick=()=>{const rr=stage.getBoundingClientRect();const n=S.blocks.length%6;addBlock(key,(rr.width/2-view.x)/view.k-BW/2+n*20,(rr.height/2-view.y)/view.k-BH/2+n*20)}}
+    else{r.draggable=true;r.ondragstart=ev=>ev.dataTransfer.setData('text/fn',key);r.onclick=()=>addBlockAtCenter(key)}
     r.onkeydown=ev=>{if(ev.key==='Enter')r.click()};r.onmouseenter=r.onfocus=()=>showDef(map,key);return r};
   if(q){const hits=Object.keys(map).filter(k=>{const n=map[k].node;return n.n.toLowerCase().includes(q)||(n.c||'').toLowerCase().includes(q)});
     if(!hits.length)P.append(h('p',{class:'note',style:'padding:0 8px'},`No term or synonym matches "${palQ}". Try a related verb or a broader word.`));
@@ -884,7 +889,7 @@ function renderInspector(){const R=$('#right');R.innerHTML='';
     n.items.forEach(t=>R.append(h('div',{class:'card'},flowFields(t),h('div',{class:'btns'},h('button',{class:'btn danger',onclick:()=>{S.io=S.io.filter(x=>x!==t);commit()}},'Remove this flow')))));
     R.append(h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>addIO(n.dir,n.c==='none'?'':n.c,true)},`Add ${n.dir==='in'?'an input':'an output'} flow`)));return}
   if(k==='block'){const b=node(id);const m=b.fn&&FMAP[b.fn]?.node;
-    R.append(h('h2',{},'Function'),h('label',{class:'fld'},h('span',{},'Text on the block (verb + object)'),h('input',{value:b.text,oninput:e=>{b.text=e.target.value;b.auto=false;renderCanvas()},onchange:()=>commit({insp:false})})));
+    R.append(h('h2',{},'Function'),h('label',{class:'fld'},h('span',{},'Text on the block (verb + object)'),h('input',{'aria-label':'Sub-function name',value:b.text,oninput:e=>{b.text=e.target.value;b.auto=false;renderCanvas()},onchange:()=>commit({insp:false})})));
     R.append(picker(FB,FMAP,b.fn,k=>{b.fn=k;commit()},['Function class','Secondary','Tertiary']));
     if(m)R.append(h('div',{class:'defn'},m.d||'',m.c?h('i',{},'Synonyms: '+m.c):null,refEl('fn',b.fn)));
     if(S.mode==='guided'){const cs=h('select',{'aria-label':'Function chain',onchange:e=>{b.chain=e.target.value;commit()}});cs.append(h('option',{value:''},'(no chain)'));
@@ -975,13 +980,13 @@ function renderChainPanel(R){const c=S.chains.find(x=>x.id===S.chainOn);R.append
   if(c){const i=S.chains.indexOf(c),t=S.io.find(x=>x.id===c.io),L=S.blocks.filter(b=>b.chain===c.id);
     R.append(h('label',{class:'fld'},h('span',{},`Chain ${i+1} name`),h('input',{value:c.name,oninput:e=>{c.name=e.target.value;renderChrome()},onchange:()=>commit()})),
       h('p',{class:'note'},t?`Following "${t.label}" through the product. Add every operation performed on or with it, and any other flows the chain needs.`:'Add the operations this chain performs.'),
-      h('h3',{},`Sub-functions (${L.length})`),L.length?h('div',{class:'list'},L.sort((a,b)=>a.x-b.x).map(b=>h('button',{class:'li',onclick:()=>{sel=new Set([b.id]);renderAll();centerOn(b.id)}},h('span',{class:'t'},b.text,h('small',{},term(b.fn)||'no basis term'))))):h('p',{class:'note'},'Add functions from the left; they join this chain.'),
+      h('h3',{},`Sub-functions (${L.length})`),L.length?h('div',{class:'list'},L.sort((a,b)=>a.x-b.x).map(b=>h('button',{class:'li',onclick:()=>{sel=new Set([b.id]);renderAll();centerOn(b.id)}},h('span',{class:'t'},b.text,h('small',{},term(b.fn)||'no basis term'))))):h('p',{class:'note'},'Use Add sub-function above the canvas or choose a function from the left; it joins this chain.'),
       h('div',{class:'btns'},h('button',{class:'btn danger',onclick:()=>deleteChain(c.id)},'Delete chain')))}
   const L=S.io.filter(t=>t.dir==='in');R.append(h('h3',{},'Input flows to follow'));
   if(!L.length)R.append(h('p',{class:'note'},'No input flows yet. Add them in step 1.'));
   else R.append(h('div',{class:'list'},L.map(t=>{const ch=S.chains.find(x=>x.io===t.id);return h('button',{class:'li'+(ch&&ch.id===S.chainOn?' sel':''),onclick:()=>{if(ch){S.chainOn=ch.id;sel.clear();commit();fit()}else newChain(t.id)}},
     h('span',{class:'chip c-'+ccls(t.flow)}),h('span',{class:'t'},t.label,h('small',{},ch?`Followed in ${chainLabel(ch.id).toLowerCase()}`:'Not followed yet. Click to start a chain.')))})));
-  R.append(h('div',{class:'btns'},h('button',{class:'btn',onclick:()=>{const c={id:uid(),name:'Chain '+(S.chains.length+1),io:null};S.chains.push(c);S.chainOn=c.id;commit()}},'Blank chain'),h('button',{class:'btn primary',onclick:()=>go('agg')},'Continue to aggregate')),
+  R.append(h('div',{class:'btns'},h('button',{class:'btn',onclick:startBlankChain},'New chain'),h('button',{class:'btn primary',onclick:()=>go('agg')},'Continue to aggregate')),
     h('p',{class:'note'},'Blocks in other chains are faded. Toggle "Other chains" above the canvas to hide them.'))}
 /* ----- Step 4: aggregate ----- */
 function renderAggPanel(R){R.append(h('h2',{},'Aggregate function chains'),h('p',{class:'note'},'Connect chains with flows where they interact: drag from a block in one chain to a block in another. Then add or remove sub-functions as needed.'));
@@ -1032,9 +1037,10 @@ function renderChrome(){const NV=$('#steps');NV.innerHTML='';const L=MODES[S.mod
   $('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;
   const bar=$('#stagebar');bar.innerHTML='';bar.style.display=S.view==='cn'?'none':'';
   bar.append(h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2)},'aria-label':'Zoom in'},'+'),h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1/1.2,r.width/2,r.height/2)},'aria-label':'Zoom out'},'−'),h('button',{class:'btn',onclick:fit},'Fit'));
-  if(S.view==='chain'){const cs=h('select',{class:'btn','aria-label':'Chain to work on',onchange:e=>{S.chainOn=e.target.value||null;sel.clear();commit();fit()}});cs.append(h('option',{value:''},'New chain…'));
+  if(S.view==='chain'){const cs=h('select',{class:'btn','aria-label':'Chain to work on',onchange:e=>{S.chainOn=e.target.value||null;sel.clear();commit();fit()}});cs.append(h('option',{value:''},'Select a chain…'));
     S.chains.forEach((c,i)=>{const o=h('option',{value:c.id},`Chain ${i+1}: ${c.name}`);if(c.id===S.chainOn)o.selected=true;cs.append(o)});
-    bar.append(cs,h('label',{class:'btn',style:'display:flex;gap:6px;align-items:center;cursor:pointer'},h('input',{type:'checkbox',checked:showOther||null,onchange:e=>{showOther=e.target.checked;renderCanvas()}}),'Other chains'))}
+    bar.append(h('button',{class:'btn primary',onclick:addSubfunction},'+ Add sub-function'),h('button',{class:'btn',onclick:startBlankChain},'+ New chain'),cs,
+      h('label',{class:'btn',style:'display:flex;gap:6px;align-items:center;cursor:pointer'},h('input',{type:'checkbox',checked:showOther||null,onchange:e=>{showOther=e.target.checked;renderCanvas()}}),'Other chains'))}
   if(isCv())bar.append(h('span',{class:'sp'}),h('button',{class:'btn',onclick:groupSel,title:'Ctrl+G'},'Group as module'),h('button',{class:'btn',onclick:()=>deleteSel(),disabled:!sel.size},'Delete'));
   if(isBB())bar.append(h('span',{class:'sp'}));const cb=clearBtn();if(cb)bar.append(cb);
   $('#hint').textContent=isBB()?'Double-click the box or a flow name to rename it.':'Drag from a block’s right dot to another block. Same-class flows share one arrow.'}
