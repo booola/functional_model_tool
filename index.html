@@ -808,12 +808,12 @@ document.addEventListener('keydown',e=>{if(e.target.closest('input,textarea,sele
 /* ===================== Palette ===================== */
 const STEPGUIDE={
  quick:{bb:['Step 1: Black box','Describe what the product does as one overall function (verb + noun), then list every flow crossing its boundary with + In / + Out. Flows of the same class share one arrow, so the black box has at most one material, one energy and one signal arrow on each side.'],
-  fs:['Step 2: Function structure','Drag functions onto the canvas, or tap one to add it. Drag from a block\'s right-side dot onto another block to draw an arrow. Each block has one arrow per flow class on each side; drawing again adds a flow to the existing arrow. Double-click a block, flow name or module name to rename it.'],
+  fs:['Step 2: Function structure','Use Add sub-function above the canvas, drag a function from the left, or tap one to add it. Drag from a block\'s right-side dot onto another block to draw an arrow. Each block has one arrow per flow class on each side; drawing again adds a flow to the existing arrow. Double-click a block, flow name or module name to rename it.'],
   check:['Step 3: Check flows','Each issue links to the block or arrow it concerns. Errors are gaps in the model; warnings flag places where the functional basis suggests a different term or flow type.']},
  guided:{bb:['Step 1: Create black box model','Write the product idea and its basic function, then list every flow crossing the boundary. Mark flows that downstream design decisions will settle with "(?)". Hand (material) and weight (energy) flows are easy to miss but important.'],
   cn:['Step 2: Correlate customer needs','Relate each customer need to one or more flows. Every need should relate to at least one flow; this also checks whether the assumed input and output flows are necessary.'],
   chain:['Step 3: Create function chains','Be the flow. Follow one input flow through to the output, listing every operation the product performs on or with it. Use Add sub-function above the canvas or choose a function from the left. Use New chain to start another sequence.'],
-  agg:['Step 4: Aggregate function chains','Connect the chains with flows where they interact. Add or remove sub-functions as needed, for example when two chains repeat the same sub-function.'],
+  agg:['Step 4: Aggregate function chains','Connect the chains with flows where they interact. Use Add sub-function above the canvas to add another operation, or remove sub-functions as needed when chains overlap.'],
   verify:['Step 5: Verify customer needs are met','Cross-reference the customer needs with the functional model. Every need must be met by one or more sub-functions; if not, add sub-functions or chains. Iteration is common.']}};
 function renderNeedFlows(){const P=$('#pal');P.innerHTML='';
   if(!S.io.length){P.append(h('p',{class:'note',style:'padding:0 8px'},'No black-box flows yet. Add them in step 1.'));return}
@@ -1037,9 +1037,10 @@ function renderChrome(){const NV=$('#steps');NV.innerHTML='';const L=MODES[S.mod
   $('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;
   const bar=$('#stagebar');bar.innerHTML='';bar.style.display=S.view==='cn'?'none':'';
   bar.append(h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1.2,r.width/2,r.height/2)},'aria-label':'Zoom in'},'+'),h('button',{class:'btn',onclick:()=>{const r=stage.getBoundingClientRect();zoomAt(1/1.2,r.width/2,r.height/2)},'aria-label':'Zoom out'},'−'),h('button',{class:'btn',onclick:fit},'Fit'));
+  if(['fs','chain','agg'].includes(S.view))bar.append(h('button',{class:'btn primary',onclick:addSubfunction},'+ Add sub-function'));
   if(S.view==='chain'){const cs=h('select',{class:'btn','aria-label':'Chain to work on',onchange:e=>{S.chainOn=e.target.value||null;sel.clear();commit();fit()}});cs.append(h('option',{value:''},'Select a chain…'));
     S.chains.forEach((c,i)=>{const o=h('option',{value:c.id},`Chain ${i+1}: ${c.name}`);if(c.id===S.chainOn)o.selected=true;cs.append(o)});
-    bar.append(h('button',{class:'btn primary',onclick:addSubfunction},'+ Add sub-function'),h('button',{class:'btn',onclick:startBlankChain},'+ New chain'),cs,
+    bar.append(h('button',{class:'btn',onclick:startBlankChain},'+ New chain'),cs,
       h('label',{class:'btn',style:'display:flex;gap:6px;align-items:center;cursor:pointer'},h('input',{type:'checkbox',checked:showOther||null,onchange:e=>{showOther=e.target.checked;renderCanvas()}}),'Other chains'))}
   if(isCv())bar.append(h('span',{class:'sp'}),h('button',{class:'btn',onclick:groupSel,title:'Ctrl+G'},'Group as module'),h('button',{class:'btn',onclick:()=>deleteSel(),disabled:!sel.size},'Delete'));
   if(isBB())bar.append(h('span',{class:'sp'}));const cb=clearBtn();if(cb)bar.append(cb);
